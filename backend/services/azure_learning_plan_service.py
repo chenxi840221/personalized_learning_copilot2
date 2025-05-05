@@ -123,57 +123,38 @@ class AzureLearningPlanService:
                     plans = []
                     for item in result.get("value", []):
                         try:
-                            # Get activities from the simplified schema
+                            # Get activities from the complex type collection
                             activities = []
                             
-                            # First try to get activities from weekly fields
-                            all_week_activities = []
-                            
-                            # Process up to 4 weeks with simplified field names (week1, week2, etc.)
-                            for week_num in range(1, 5):
-                                week_field = f"week{week_num}"
-                                if week_field in item and item[week_field]:
+                            # Process activities collection directly from Azure Search response
+                            if "activities" in item and isinstance(item["activities"], list):
+                                logger.info(f"Found {len(item['activities'])} activities in complex type collection")
+                                
+                                # Convert to LearningActivity objects
+                                for activity_obj in item["activities"]:
                                     try:
-                                        week_activities = json.loads(item[week_field])
-                                        logger.info(f"Found {len(week_activities)} activities for {week_field}")
-                                        all_week_activities.extend(week_activities)
-                                    except json.JSONDecodeError:
-                                        logger.error(f"Error parsing {week_field}: {item.get(week_field)}")
-                            
-                            # Process main activities JSON
-                            main_activities = []
-                            if "activitiesJson" in item and item["activitiesJson"]:
-                                try:
-                                    main_activities = json.loads(item["activitiesJson"])
-                                    logger.info(f"Found {len(main_activities)} activities in main activitiesJson")
-                                except json.JSONDecodeError:
-                                    logger.error(f"Error parsing activitiesJson: {item.get('activitiesJson')}")
-                            
-                            # Combine week activities and main activities
-                            combined_activities = all_week_activities + main_activities
-                            logger.info(f"Total activities found: {len(combined_activities)}")
-                            
-                            # Convert to LearningActivity objects
-                            for activity_dict in combined_activities:
-                                try:
-                                    activity = LearningActivity(
-                                        id=activity_dict.get("id", str(uuid.uuid4())),
-                                        title=activity_dict.get("title", "Activity"),
-                                        description=activity_dict.get("description", ""),
-                                        content_id=activity_dict.get("content_id"),
-                                        content_url=activity_dict.get("content_url"),
-                                        duration_minutes=activity_dict.get("duration_minutes", 30),
-                                        order=activity_dict.get("order", 1),
-                                        day=activity_dict.get("day", 1),
-                                        status=ActivityStatus(activity_dict.get("status", "not_started")),
-                                        completed_at=activity_dict.get("completed_at"),
-                                        learning_benefit=activity_dict.get("learning_benefit", ""),
-                                        metadata=activity_dict.get("metadata", {})
-                                    )
-                                    activities.append(activity)
-                                except Exception as activity_error:
-                                    logger.error(f"Error creating activity: {activity_error}")
-                            
+                                        # Create a LearningActivity with fields from the complex type
+                                        # Add default values for fields not in the schema
+                                        activity = LearningActivity(
+                                            id=activity_obj.get("id", str(uuid.uuid4())),
+                                            title=activity_obj.get("title", "Activity"),
+                                            description=activity_obj.get("description", ""),
+                                            content_id=activity_obj.get("content_id"),
+                                            content_url="",  # Not in schema but needed
+                                            duration_minutes=activity_obj.get("duration_minutes", 30),
+                                            order=activity_obj.get("order", 1),
+                                            day=1,  # Default day since not in schema
+                                            status=ActivityStatus(activity_obj.get("status", "not_started")),
+                                            completed_at=activity_obj.get("completed_at"),
+                                            learning_benefit="",  # Not in schema
+                                            metadata={}  # Not in schema
+                                        )
+                                        activities.append(activity)
+                                    except Exception as activity_error:
+                                        logger.error(f"Error creating activity: {activity_error}")
+                            else:
+                                logger.warning("No activities field found in the learning plan")
+                                
                             # Fallback for backward compatibility with old schema
                             if not activities:
                                 # Try old field names
@@ -291,7 +272,7 @@ class AzureLearningPlanService:
             # Convert plan to dict
             plan_dict = plan.dict()
             
-            # Create a new dictionary with the simplified field names for Azure Search
+            # Create a new dictionary with fields matching the Azure Search schema
             simplified_dict = {
                 "id": plan_dict.get("id"),
                 "student_id": plan_dict.get("student_id"),
@@ -300,9 +281,7 @@ class AzureLearningPlanService:
                 "subject": plan_dict.get("subject", "General"),
                 "topics": plan_dict.get("topics", []),
                 "status": plan_dict.get("status", "not_started"),
-                # Add page_content field for searchability 
-                "page_content": plan_dict.get("description", "")
-                # Removed owner_id field as it doesn't exist in the schema
+                "progress_percentage": plan_dict.get("progress_percentage", 0.0)
             }
             
             # Format dates according to the exact field names in the schema
@@ -321,105 +300,38 @@ class AzureLearningPlanService:
             if "end_date" in plan_dict and plan_dict["end_date"]:
                 if isinstance(plan_dict["end_date"], datetime):
                     simplified_dict["end_date"] = plan_dict["end_date"].isoformat() + "Z"
-                    
-            # Set progress percentage with exact field name from schema
-            simplified_dict["progress_percentage"] = plan_dict.get("progress_percentage", 0.0)
             
-            # Convert metadata to string
-            if "metadata" in plan_dict and plan_dict["metadata"]:
-                if isinstance(plan_dict["metadata"], dict):
-                    simplified_dict["metadata"] = json.dumps(plan_dict["metadata"])
-                else:
-                    simplified_dict["metadata"] = str(plan_dict["metadata"])
-            
-            # Convert activities to JSON string for storage in Azure Search
-            # Azure Search doesn't handle nested objects in the same way as other fields
-            activities_json = []
+            # Convert activities to a collection of complex types as per schema
+            activities_collection = []
             for activity in plan.activities:
                 activity_dict = activity.dict()
+                # Only include fields that exist in the schema
+                activity_obj = {
+                    "id": activity_dict.get("id"),
+                    "title": activity_dict.get("title"),
+                    "description": activity_dict.get("description"),
+                    "content_id": activity_dict.get("content_id"),
+                    "duration_minutes": activity_dict.get("duration_minutes"),
+                    "order": activity_dict.get("order"),
+                    "status": activity_dict.get("status")
+                }
+                
                 # Format completed_at date if present
                 if activity_dict.get("completed_at"):
                     if isinstance(activity_dict["completed_at"], datetime):
-                        activity_dict["completed_at"] = activity_dict["completed_at"].isoformat() + "Z"
-                activities_json.append(activity_dict)
+                        activity_obj["completed_at"] = activity_dict["completed_at"].isoformat() + "Z"
                 
-            # Store all activities in a single field by default
-            simplified_dict["activitiesJson"] = json.dumps(activities_json)
+                activities_collection.append(activity_obj)
             
-            try:
-                # For longer plans, break activities into weekly chunks to avoid Azure Search limits
-                # Get the number of weeks in the plan from metadata if available
-                weeks_in_period = 1
-                use_weekly_chunking = False
-                
-                # Check if this plan has been explicitly marked for weekly chunking
-                if hasattr(plan, "use_weekly_chunking") and getattr(plan, "use_weekly_chunking", False):
-                    use_weekly_chunking = True
-                    # Estimate number of weeks based on activity count
-                    weeks_in_period = (len(activities_json) + 6) // 7  # Ceiling division to get full weeks
-                # Otherwise check metadata or activity count
-                elif "metadata" in plan_dict and isinstance(plan_dict["metadata"], dict) and "weeks_in_period" in plan_dict["metadata"]:
-                    weeks_in_period = plan_dict["metadata"]["weeks_in_period"]
-                    use_weekly_chunking = weeks_in_period > 1
-                elif len(activities_json) > 20:  # Estimate number of weeks based on activity count
-                    weeks_in_period = (len(activities_json) + 6) // 7  # Ceiling division to get full weeks
-                    use_weekly_chunking = True
-                
-                logger.info(f"Plan has {len(activities_json)} activities across {weeks_in_period} weeks")
-                
-                # If the plan has a lot of activities or spans multiple weeks, store activities by week
-                if use_weekly_chunking:
-                    try:
-                        # For our simplified schema, we only have week1-week4 available
-                        weekly_activities = {}
-                        for activity in activities_json:
-                            # Calculate which week this activity belongs to
-                            day = activity.get("day", 1)
-                            week_num = (day - 1) // 7 + 1  # Week 1, 2, 3, etc.
-                            
-                            # Initialize the week's activity list if it doesn't exist
-                            if week_num not in weekly_activities:
-                                weekly_activities[week_num] = []
-                                
-                            # Add the activity to the appropriate week
-                            weekly_activities[week_num].append(activity)
-                        
-                        # Only use chunking for weeks 1-4, as these are defined in our simplified schema
-                        valid_weeks = {k: v for k, v in weekly_activities.items() if 1 <= k <= 4}
-                        
-                        if valid_weeks:
-                            # Store each week's activities in the corresponding field
-                            for week_num, week_activities in valid_weeks.items():
-                                week_json = json.dumps(week_activities)
-                                field_name = f"week{week_num}"  # Use simplified field names (week1, week2, etc.)
-                                simplified_dict[field_name] = week_json
-                                logger.info(f"Week {week_num} activities: {len(week_activities)} activities, {len(week_json)} bytes")
-                            
-                            # Store any overflow into the main activities JSON
-                            overflow_activities = []
-                            overflow_weeks = {k: v for k, v in weekly_activities.items() if k > 4}
-                            for week_activities in overflow_weeks.values():
-                                overflow_activities.extend(week_activities)
-                            
-                            if overflow_activities:
-                                logger.info(f"Storing {len(overflow_activities)} overflow activities in activitiesJson")
-                                # Update the activitiesJson field to only include overflow activities
-                                simplified_dict["activitiesJson"] = json.dumps(overflow_activities)
-                        
-                    except Exception as chunking_error:
-                        logger.error(f"Error during activity chunking: {chunking_error}")
-                        # We already stored all activities in activitiesJson, so no need for fallback
-                
-                # Replace plan_dict with our simplified dictionary
-                plan_dict = simplified_dict
-                
-                # We're already using the simplified dictionary, so no need for field remapping
-                logger.info(f"Using simplified dictionary with fields: {', '.join(plan_dict.keys())}")
-                
-                logger.info(f"Plan dict ready for Azure Search with keys: {', '.join(plan_dict.keys())}")
-            except Exception as e:
-                logger.exception(f"Error preparing plan data for Azure Search: {e}")
-                return False
+            # Add activities as a collection field
+            simplified_dict["activities"] = activities_collection
+            
+            # No need for chunking or JSON conversion - using complex types directly
+
+            # Replace plan_dict with our simplified dictionary
+            plan_dict = simplified_dict
+            
+            logger.info(f"Plan dict ready for Azure Search with keys: {', '.join(plan_dict.keys())}")
             
             # Build request body
             request_body = {
@@ -533,57 +445,38 @@ class AzureLearningPlanService:
                     # Get plan data
                     item = result["value"][0]
                     
-                    # Get activities from the simplified schema
+                    # Get activities from the complex type collection
                     activities = []
                     
-                    # First try to get activities from weekly fields
-                    all_week_activities = []
-                    
-                    # Process up to 4 weeks with simplified field names (week1, week2, etc.)
-                    for week_num in range(1, 5):
-                        week_field = f"week{week_num}"
-                        if week_field in item and item[week_field]:
+                    # Process activities collection directly from Azure Search response
+                    if "activities" in item and isinstance(item["activities"], list):
+                        logger.info(f"Found {len(item['activities'])} activities in complex type collection")
+                        
+                        # Convert to LearningActivity objects
+                        for activity_obj in item["activities"]:
                             try:
-                                week_activities = json.loads(item[week_field])
-                                logger.info(f"Found {len(week_activities)} activities for {week_field}")
-                                all_week_activities.extend(week_activities)
-                            except json.JSONDecodeError:
-                                logger.error(f"Error parsing {week_field}: {item.get(week_field)}")
-                    
-                    # Process main activities JSON
-                    main_activities = []
-                    if "activitiesJson" in item and item["activitiesJson"]:
-                        try:
-                            main_activities = json.loads(item["activitiesJson"])
-                            logger.info(f"Found {len(main_activities)} activities in main activitiesJson")
-                        except json.JSONDecodeError:
-                            logger.error(f"Error parsing activitiesJson: {item.get('activitiesJson')}")
-                    
-                    # Combine week activities and main activities
-                    combined_activities = all_week_activities + main_activities
-                    logger.info(f"Total activities found: {len(combined_activities)}")
-                    
-                    # Convert to LearningActivity objects
-                    for activity_dict in combined_activities:
-                        try:
-                            activity = LearningActivity(
-                                id=activity_dict.get("id", str(uuid.uuid4())),
-                                title=activity_dict.get("title", "Activity"),
-                                description=activity_dict.get("description", ""),
-                                content_id=activity_dict.get("content_id"),
-                                content_url=activity_dict.get("content_url"),
-                                duration_minutes=activity_dict.get("duration_minutes", 30),
-                                order=activity_dict.get("order", 1),
-                                day=activity_dict.get("day", 1),
-                                status=ActivityStatus(activity_dict.get("status", "not_started")),
-                                completed_at=activity_dict.get("completed_at"),
-                                learning_benefit=activity_dict.get("learning_benefit", ""),
-                                metadata=activity_dict.get("metadata", {})
-                            )
-                            activities.append(activity)
-                        except Exception as activity_error:
-                            logger.error(f"Error creating activity: {activity_error}")
-                    
+                                # Create a LearningActivity with fields from the complex type
+                                # Add default values for fields not in the schema
+                                activity = LearningActivity(
+                                    id=activity_obj.get("id", str(uuid.uuid4())),
+                                    title=activity_obj.get("title", "Activity"),
+                                    description=activity_obj.get("description", ""),
+                                    content_id=activity_obj.get("content_id"),
+                                    content_url="",  # Not in schema but needed
+                                    duration_minutes=activity_obj.get("duration_minutes", 30),
+                                    order=activity_obj.get("order", 1),
+                                    day=1,  # Default day since not in schema
+                                    status=ActivityStatus(activity_obj.get("status", "not_started")),
+                                    completed_at=activity_obj.get("completed_at"),
+                                    learning_benefit="",  # Not in schema
+                                    metadata={}  # Not in schema
+                                )
+                                activities.append(activity)
+                            except Exception as activity_error:
+                                logger.error(f"Error creating activity: {activity_error}")
+                    else:
+                        logger.warning("No activities field found in the learning plan")
+                        
                     # Fallback for backward compatibility with old schema
                     if not activities:
                         # Try old field names

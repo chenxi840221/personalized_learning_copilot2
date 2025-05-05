@@ -67,27 +67,35 @@ PLANS_INDEX_NAME = settings.PLANS_INDEX_NAME or "learning-plans"
 # Field definitions                                                           #
 ###############################################################################
 
-# Learning Plans index fields with minimal schema to ensure compatibility with API version 2023-07-01-Preview
+# Learning Plans index fields matching the schema provided
 PLANS_FIELDS = [
-    {"name": "id", "type": "Edm.String", "key": True, "filterable": True}, 
-    {"name": "student_id", "type": "Edm.String", "filterable": True},
+    {"name": "id", "type": "Edm.String", "key": True, "filterable": True},
+    {"name": "student_id", "type": "Edm.String", "filterable": True, "searchable": True},
     {"name": "title", "type": "Edm.String", "searchable": True},
     {"name": "description", "type": "Edm.String", "searchable": True},
-    {"name": "subject", "type": "Edm.String", "filterable": True, "searchable": True},
-    {"name": "topics", "type": "Collection(Edm.String)", "filterable": True, "searchable": True},
-    {"name": "status", "type": "Edm.String", "filterable": True},
-    {"name": "progress", "type": "Edm.Double", "filterable": True, "sortable": True},
-    {"name": "created", "type": "Edm.DateTimeOffset", "filterable": True, "sortable": True},
-    {"name": "updated", "type": "Edm.DateTimeOffset", "filterable": True, "sortable": True},
-    {"name": "startDate", "type": "Edm.DateTimeOffset", "filterable": True},
-    {"name": "endDate", "type": "Edm.DateTimeOffset", "filterable": True},
-    {"name": "metadata", "type": "Edm.String"},
-    {"name": "ownerId", "type": "Edm.String", "filterable": True},
-    {"name": "activitiesJson", "type": "Edm.String"},
-    {"name": "week1", "type": "Edm.String"},
-    {"name": "week2", "type": "Edm.String"},
-    {"name": "week3", "type": "Edm.String"},
-    {"name": "week4", "type": "Edm.String"}
+    {"name": "subject", "type": "Edm.String", "searchable": True, "filterable": True, "facetable": True},
+    {"name": "topics", "type": "Collection(Edm.String)", "searchable": True, "filterable": True, "facetable": True},
+    {"name": "status", "type": "Edm.String", "filterable": True, "facetable": True},
+    {"name": "progress_percentage", "type": "Edm.Double", "filterable": True, "sortable": True},
+    {"name": "created_at", "type": "Edm.DateTimeOffset", "filterable": True, "sortable": True},
+    {"name": "updated_at", "type": "Edm.DateTimeOffset", "filterable": True, "sortable": True},
+    {"name": "start_date", "type": "Edm.DateTimeOffset", "filterable": True, "sortable": True},
+    {"name": "end_date", "type": "Edm.DateTimeOffset", "filterable": True, "sortable": True},
+    # Complex type for activities
+    {
+        "name": "activities",
+        "type": "Collection(Edm.ComplexType)",
+        "fields": [
+            {"name": "id", "type": "Edm.String"},
+            {"name": "title", "type": "Edm.String"},
+            {"name": "description", "type": "Edm.String"},
+            {"name": "content_id", "type": "Edm.String"},
+            {"name": "duration_minutes", "type": "Edm.Int32"},
+            {"name": "order", "type": "Edm.Int32"},
+            {"name": "status", "type": "Edm.String"},
+            {"name": "completed_at", "type": "Edm.DateTimeOffset"}
+        ]
+    }
 ]
 
 ###############################################################################
@@ -239,198 +247,95 @@ async def restore_documents(index_name: str, documents: List[Dict[str, Any]]) ->
                 # Prepare documents for indexing
                 migrated_batch = []
                 for doc in batch:
-                    # Handle activities data and determine chunking method
-                    # Check if plan needs chunking based on metadata
-                    needs_chunking = False
+                    # Extract and process activities to use the complex type field in the new schema
+                    activities_collection = []
                     
-                    # Check metadata for weeks_in_period to determine if chunking is needed
-                    if "metadata" in doc and doc["metadata"]:
-                        try:
-                            if isinstance(doc["metadata"], str):
-                                metadata = json.loads(doc["metadata"])
-                                if "weeks_in_period" in metadata and metadata["weeks_in_period"] > 1:
-                                    needs_chunking = True
-                                    logger.info(f"Chunking needed based on metadata: {metadata['weeks_in_period']} weeks")
-                            elif isinstance(doc["metadata"], dict) and "weeks_in_period" in doc["metadata"] and doc["metadata"]["weeks_in_period"] > 1:
-                                needs_chunking = True
-                                logger.info(f"Chunking needed based on metadata: {doc['metadata']['weeks_in_period']} weeks")
-                        except Exception as e:
-                            logger.warning(f"Error parsing metadata for chunking decision: {e}")
+                    # Check all possible sources of activities
+                    potential_sources = [
+                        ("activities", lambda x: x),  # Direct activities field
+                        ("activities_json", lambda x: json.loads(x) if isinstance(x, str) else x),
+                        ("activities_content", lambda x: json.loads(x) if isinstance(x, str) else x),
+                        ("activitiesJson", lambda x: json.loads(x) if isinstance(x, str) else x)
+                    ]
                     
-                    # Check for existing activities chunking metadata
-                    existing_chunking = False
-                    if "activities_chunking" in doc and doc["activities_chunking"] == "weekly":
-                        existing_chunking = True
-                        needs_chunking = True
+                    # Also check for weekly chunks
+                    for week_num in range(1, 9):
+                        week_field = f"activities_week_{week_num}"
+                        if week_field in doc and doc[week_field]:
+                            potential_sources.append((week_field, lambda x: json.loads(x) if isinstance(x, str) else x))
                     
-                    # If we have activities_week_* fields, plan was already chunked
-                    for key in doc.keys():
-                        if key.startswith("activities_week_") and doc[key]:
-                            existing_chunking = True
-                            needs_chunking = True
-                            break
-                    
-                    # Extract and process activities
-                    activities = []
-                    
-                    # Check for activities_json or activities_content field
-                    if "activities_json" in doc and doc["activities_json"]:
-                        try:
-                            activities_json = doc["activities_json"]
-                            if isinstance(activities_json, str):
-                                activities = json.loads(activities_json)
-                            elif isinstance(activities_json, list):
-                                activities = activities_json
-                                
-                            # Migrate activities_json to activities_content
-                            doc["activities_content"] = doc["activities_json"]
-                            del doc["activities_json"]
-                        except Exception as e:
-                            logger.warning(f"Error parsing activities_json: {e}")
-                    elif "activities_content" in doc and doc["activities_content"]:
-                        try:
-                            activities_content = doc["activities_content"]
-                            if isinstance(activities_content, str):
-                                activities = json.loads(activities_content)
-                            elif isinstance(activities_content, list):
-                                activities = activities_content
-                        except Exception as e:
-                            logger.warning(f"Error parsing activities_content: {e}")
-                    
-                    # If no activities found yet, check for activities field
-                    if not activities and "activities" in doc:
-                        try:
-                            if isinstance(doc["activities"], str):
-                                activities = json.loads(doc["activities"])
-                            elif isinstance(doc["activities"], list):
-                                activities = doc["activities"]
-                        except Exception as e:
-                            logger.warning(f"Error parsing activities field: {e}")
-                    
-                    # If we have many activities, this is a sign chunking might be needed
-                    if len(activities) > 20:
-                        needs_chunking = True
-                        logger.info(f"Chunking needed based on activity count: {len(activities)} activities")
-                    
-                    # Process chunking based on activities
-                    if needs_chunking and activities and not existing_chunking:
-                        # Organize activities into weeks based on day field
-                        weekly_activities = {}
-                        
-                        for activity in activities:
-                            # Get day field, default to 1 if not present
-                            day = activity.get("day", 1)
-                            # Calculate week number: days 1-7 = week 1, days 8-14 = week 2, etc.
-                            week_num = (day - 1) // 7 + 1
-                            
-                            # Initialize the week's activity list if it doesn't exist
-                            if week_num not in weekly_activities:
-                                weekly_activities[week_num] = []
-                                
-                            # Add the activity to the appropriate week
-                            weekly_activities[week_num].append(activity)
-                        
-                        # Only use chunking for weeks 1-8, as these are defined in our schema
-                        valid_weeks = {k: v for k, v in weekly_activities.items() if 1 <= k <= 8}
-                        
-                        if valid_weeks:
-                            # Remove the original activities
-                            doc.pop("activities", None)
-                            doc.pop("activities_json", None)
-                            
-                            # Store each week's activities in a separate field
-                            for week_num, week_activities in valid_weeks.items():
-                                week_field = f"activities_week_{week_num}"
-                                doc[week_field] = json.dumps(week_activities)
-                                logger.info(f"Week {week_num} activities: {len(week_activities)} activities")
-                            
-                            # Add fields to indicate we're using weekly chunking
-                            doc["activities_chunking"] = "weekly"
-                            doc["activities_weeks"] = list(valid_weeks.keys())
-                            
-                            # If we had weeks > 8, store them in activities_content as overflow
-                            overflow_weeks = {k: v for k, v in weekly_activities.items() if k > 8}
-                            if overflow_weeks:
-                                overflow_activities = []
-                                for week_activities in overflow_weeks.values():
-                                    overflow_activities.extend(week_activities)
-                                
-                                if overflow_activities:
-                                    logger.info(f"Storing {len(overflow_activities)} overflow activities in activities_content")
-                                    doc["activities_content"] = json.dumps(overflow_activities)
-                        else:
-                            # No valid weeks found, use activities_content
-                            logger.info("No valid weeks found, using activities_content")
-                            doc["activities_content"] = json.dumps(activities)
-                            doc["activities_chunking"] = "none"
-                            # Remove any week fields if they exist
-                            for week in range(1, 9):
-                                field = f"activities_week_{week}"
-                                if field in doc:
-                                    del doc[field]
-                    elif existing_chunking:
-                        # Plan already has chunking, make sure weeks list is correct
-                        week_numbers = []
-                        for week in range(1, 9):
-                            field = f"activities_week_{week}"
-                            if field in doc and doc[field]:
-                                week_numbers.append(week)
-                        
-                        if week_numbers:
-                            doc["activities_weeks"] = week_numbers
-                            doc["activities_chunking"] = "weekly"
-                    elif "activities_json" in doc and doc["activities_json"]:
-                        # No chunking needed - just ensure all required fields exist
-                        doc["activities_chunking"] = "none"
-                        # Migrate activities_json to activities_content
-                        doc["activities_content"] = doc["activities_json"]
-                        del doc["activities_json"]
-                        # Ensure all week fields are removed
-                        for week in range(1, 9):
-                            field = f"activities_week_{week}"
-                            if field in doc:
-                                del doc[field]
-                    else:
-                        # Ensure activities_content exists even if empty
-                        if "activities" in doc and doc["activities"]:
+                    # Try each source to extract activities
+                    found_activities = []
+                    for field_name, converter in potential_sources:
+                        if field_name in doc and doc[field_name]:
                             try:
-                                if isinstance(doc["activities"], str):
-                                    activities_list = json.loads(doc["activities"])
-                                else:
-                                    activities_list = doc["activities"]
-                                doc["activities_content"] = json.dumps(activities_list)
+                                activities = converter(doc[field_name])
+                                if activities and isinstance(activities, list):
+                                    logger.info(f"Found {len(activities)} activities in {field_name}")
+                                    found_activities.extend(activities)
+                                    
+                                    # Remove the old field as we'll migrate to the new schema
+                                    del doc[field_name]
                             except Exception as e:
-                                logger.warning(f"Error converting activities to JSON: {e}")
-                                doc["activities_content"] = "[]"
-                        else:
-                            doc["activities_content"] = "[]"
-                        
-                        # Set chunking method to none
-                        doc["activities_chunking"] = "none"
-                        
-                        # Remove any week fields if they exist
-                        for week in range(1, 9):
-                            field = f"activities_week_{week}"
-                            if field in doc:
-                                del doc[field]
+                                logger.warning(f"Error extracting activities from {field_name}: {e}")
                     
-                    # If activities field exists, remove it as Azure Search doesn't support nested objects directly
-                    if "activities" in doc:
-                        del doc["activities"]
-                    
-                    # Migrate metadata to metadata_json for API compatibility
-                    if "metadata" in doc:
-                        if isinstance(doc["metadata"], dict):
-                            doc["metadata_json"] = json.dumps(doc["metadata"])
-                        elif isinstance(doc["metadata"], str):
-                            doc["metadata_json"] = doc["metadata"]
-                        # Remove the original metadata field which is causing the error
-                        del doc["metadata"]
+                    # Process the activities to match the complex type schema
+                    for activity in found_activities:
+                        # Create a new activity object with only the fields in the schema
+                        activity_obj = {
+                            "id": activity.get("id", str(uuid.uuid4())),
+                            "title": activity.get("title", "Activity"),
+                            "description": activity.get("description", ""),
+                            "content_id": activity.get("content_id"),
+                            "duration_minutes": activity.get("duration_minutes", 30),
+                            "order": activity.get("order", 1),
+                            "status": activity.get("status", "not_started")
+                        }
                         
-                    # Migrate owner_id to owner_id_field for API compatibility
-                    if "owner_id" in doc:
-                        doc["owner_id_field"] = doc["owner_id"]
-                        del doc["owner_id"]
+                        # Format completed_at date if present
+                        if "completed_at" in activity and activity["completed_at"]:
+                            if isinstance(activity["completed_at"], str):
+                                activity_obj["completed_at"] = activity["completed_at"]
+                            else:
+                                # Try to convert to ISO format
+                                try:
+                                    from datetime import datetime
+                                    dt = activity["completed_at"]
+                                    if isinstance(dt, datetime):
+                                        activity_obj["completed_at"] = dt.isoformat() + "Z"
+                                except:
+                                    pass
+                        
+                        activities_collection.append(activity_obj)
+                    
+                    # Add activities as a complex type collection
+                    if activities_collection:
+                        doc["activities"] = activities_collection
+                        logger.info(f"Added {len(activities_collection)} activities as complex type collection")
+                    
+                    # Update field names to match the schema
+                    field_mappings = {
+                        "created": "created_at",
+                        "updated": "updated_at",
+                        "startDate": "start_date",
+                        "endDate": "end_date",
+                        "progress": "progress_percentage"
+                    }
+                    
+                    # Perform field name mappings
+                    for old_name, new_name in field_mappings.items():
+                        if old_name in doc:
+                            doc[new_name] = doc[old_name]
+                            del doc[old_name]
+                    
+                    # Check if there are any fields in the document that don't exist in the schema
+                    schema_fields = [f["name"] for f in PLANS_FIELDS]
+                    unknown_fields = [f for f in doc.keys() if f not in schema_fields and not f.startswith("@")]
+                    
+                    if unknown_fields:
+                        logger.warning(f"Removing unknown fields not in schema: {', '.join(unknown_fields)}")
+                        for field in unknown_fields:
+                            del doc[field]
                     
                     migrated_batch.append(doc)
                 

@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useEntraAuth } from '../hooks/useEntraAuth';
 import { getStudentProfiles } from '../services/api';
-import { createLearningPlan, createAILearningPlan } from '../services/content';
+import { createLearningPlan, createAILearningPlan, pollTaskUntilComplete } from '../services/content';
 
 /**
  * LearningPlanCreator - Component for creating personalized learning plans
@@ -18,6 +18,8 @@ const LearningPlanCreator = ({ onPlanCreated, onCancel }) => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [authError, setAuthError] = useState(false);
+  const [taskProgress, setTaskProgress] = useState(null);
+  const [taskStatus, setTaskStatus] = useState(null);
   
   // Form state
   const [selectedProfileId, setSelectedProfileId] = useState('');
@@ -110,47 +112,101 @@ const LearningPlanCreator = ({ onPlanCreated, onCancel }) => {
     setLoading(true);
     setError('');
     setSuccess('');
+    setTaskProgress(null);
+    setTaskStatus(null);
     
     try {
-      let createdPlan;
+      let planParams;
       
-      // Different API calls based on plan type
+      // Build plan parameters based on plan type
       if (planType === 'all_subjects') {
         // Create a balanced learning plan for all subjects
-        createdPlan = await createAILearningPlan({
+        planParams = {
           student_profile_id: selectedProfileId,
           daily_minutes: dailyMinutes,
           learning_period: learningPeriod,
           type: 'balanced'
-        });
+        };
       } else {
         // Create a plan for a single subject
-        createdPlan = await createAILearningPlan({
+        planParams = {
           student_profile_id: selectedProfileId,
           subject: selectedSubject,
           daily_minutes: dailyMinutes,
           learning_period: learningPeriod,
           type: 'focused'
-        });
+        };
       }
       
-      setSuccess('Learning plan created successfully!');
+      // Start plan creation and get task ID for polling
+      const taskResponse = await createAILearningPlan(planParams);
       
-      // Notify parent component
-      if (onPlanCreated) {
-        onPlanCreated(createdPlan);
+      if (taskResponse && taskResponse.task_id) {
+        const taskId = taskResponse.task_id;
+        console.log(`📊 Started learning plan creation task: ${taskId}`);
+        
+        // Set initial task status
+        setTaskStatus(taskResponse.status);
+        setTaskProgress(0);
+        
+        // Poll for task completion
+        try {
+          // Poll the task until it completes
+          const completedPlan = await pollTaskUntilComplete(
+            taskId,
+            // Progress callback
+            (status) => {
+              setTaskStatus(status.status);
+              setTaskProgress(status.progress);
+              
+              // Update message if available
+              if (status.message) {
+                setSuccess(`Creating plan: ${status.message}`);
+              }
+              
+              // Show current step if available
+              if (status.current_step) {
+                console.log(`Current step: ${status.current_step}`);
+              }
+            },
+            // Error callback
+            (error) => {
+              console.error('Task polling error:', error);
+              setError(`Plan creation error: ${error.message}`);
+              setTaskStatus('failed');
+            },
+            2000,  // Check every 2 seconds
+            10 * 60 * 1000  // Allow up to 10 minutes for completion (increased from 5 to handle longer plans)
+          );
+          
+          // Plan created successfully
+          console.log('Learning plan created:', completedPlan);
+          setSuccess('Learning plan created successfully!');
+          
+          // Notify parent component
+          if (onPlanCreated && completedPlan) {
+            onPlanCreated(completedPlan);
+          }
+          
+          // Reset form after a short delay
+          setTimeout(() => {
+            setSelectedProfileId('');
+            setSelectedProfile(null);
+            setPlanType('all_subjects');
+            setSelectedSubject('');
+            setLearningPeriod('one_month');
+            setSuccess('');
+            setTaskProgress(null);
+            setTaskStatus(null);
+          }, 2000);
+        } catch (pollingError) {
+          // Handle polling errors
+          console.error('Error polling task status:', pollingError);
+          setError(`Error creating learning plan: ${pollingError.message}`);
+        }
+      } else {
+        throw new Error('No task ID returned from plan creation');
       }
-      
-      // Reset form after a short delay
-      setTimeout(() => {
-        setSelectedProfileId('');
-        setSelectedProfile(null);
-        setPlanType('all_subjects');
-        setSelectedSubject('');
-        setLearningPeriod('one_month');
-        setSuccess('');
-      }, 2000);
-      
     } catch (error) {
       console.error('Error creating learning plan:', error);
       
@@ -164,6 +220,8 @@ const LearningPlanCreator = ({ onPlanCreated, onCancel }) => {
           errorMessage = 'Please select a valid subject for the learning plan.';
         } else if (error.message.includes('profile')) {
           errorMessage = 'There was an issue with the student profile data. Please check the profile or try another one.';
+        } else if (error.message.includes('timeout')) {
+          errorMessage = 'The request timed out. This may indicate that the server is busy. The plan is still being created in the background.';
         } else {
           // Use the error message but limit its length
           errorMessage = `Error: ${error.message.slice(0, 100)}${error.message.length > 100 ? '...' : ''}`;
@@ -171,6 +229,7 @@ const LearningPlanCreator = ({ onPlanCreated, onCancel }) => {
       }
       
       setError(errorMessage);
+      setTaskStatus('failed');
     } finally {
       setLoading(false);
     }
@@ -200,6 +259,19 @@ const LearningPlanCreator = ({ onPlanCreated, onCancel }) => {
       {success && (
         <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
           {success}
+          
+          {/* Show progress bar if task is in progress */}
+          {taskProgress !== null && taskStatus === 'in_progress' && (
+            <div className="mt-2">
+              <div className="w-full bg-gray-200 rounded-full h-2.5 mb-1">
+                <div 
+                  className="bg-green-600 h-2.5 rounded-full transition-all duration-300" 
+                  style={{ width: `${taskProgress}%` }}
+                ></div>
+              </div>
+              <div className="text-xs text-gray-600 text-right">{taskProgress}% Complete</div>
+            </div>
+          )}
         </div>
       )}
       
@@ -427,7 +499,10 @@ const LearningPlanCreator = ({ onPlanCreated, onCancel }) => {
             disabled={loading || !selectedProfileId || (planType === 'single_subject' && !selectedSubject)}
             className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 disabled:opacity-50"
           >
-            {loading ? 'Creating Plan...' : 'Create Learning Plan'}
+            {loading ? 
+              (taskProgress !== null ? `Creating Plan (${taskProgress}%)` : 'Starting...') 
+              : 'Create Learning Plan'
+            }
           </button>
         </div>
       </form>

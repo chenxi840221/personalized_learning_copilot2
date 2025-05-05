@@ -262,7 +262,8 @@ class StudentProfileManager:
     async def create_or_update_student_profile(
         self, 
         report_data: Dict[str, Any], 
-        report_id: str
+        report_id: str,
+        owner_id: str = None
     ) -> Optional[Dict[str, Any]]:
         """
         Create a new student profile or update an existing one.
@@ -439,7 +440,9 @@ class StudentProfileManager:
                     "current_school_year": school_year,
                     "current_term": term,
                     "years_and_terms": years_and_terms,
-                    "historical_data": json.dumps(historical_data) if historical_data else None
+                    "historical_data": json.dumps(historical_data) if historical_data else None,
+                    # Add owner_id
+                    "owner_id": owner_id
                 }
                 
                 # Generate embedding for the profile

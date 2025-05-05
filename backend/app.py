@@ -19,9 +19,25 @@ app = FastAPI(
     version="0.2.0",
 )
 
-# Add enhanced CORS handling
+# Add direct CORS middleware to handle all responses including errors
+from middleware.direct_cors_middleware import DirectCorsMiddleware
+# Ensure we add localhost:3000 to allowed origins for development
+dev_origins = settings.CORS_ORIGINS or []
+if "http://localhost:3000" not in dev_origins:
+    dev_origins.append("http://localhost:3000")
+if "http://localhost:8001" not in dev_origins:
+    dev_origins.append("http://localhost:8001")
+
+# Use our direct CORS middleware
+app.add_middleware(DirectCorsMiddleware, allowed_origins=dev_origins)
+
+# Keeping the standard CORS setup as a fallback
 from middleware.cors_middleware import setup_cors
-setup_cors(app, settings.CORS_ORIGINS)
+setup_cors(app, dev_origins)
+
+# Add timeout middleware for long-running operations
+from middleware.timeout_middleware import add_timeout_middleware
+add_timeout_middleware(app)
 
 # Add resource authorization middleware
 from middleware.authorization_middleware import create_authorization_middleware
@@ -36,6 +52,8 @@ from api.student_profile_routes import student_profile_router
 from api.debug_routes import debug_router
 from api.direct_profile_indexer import direct_index_router
 from api.user_routes import router as user_router
+from api.task_status_routes import router as task_status_router
+from api.debug_cors_routes import router as debug_cors_router
 
 # Import AI routes if available
 try:
@@ -79,6 +97,12 @@ async def startup_event():
     except Exception as e:
         logger.warning(f"Could not initialize Learning Plan service: {e}")
     
+    # Start task status cleanup
+    import asyncio
+    from utils.task_status_tracker import start_cleanup_job
+    asyncio.create_task(start_cleanup_job())
+    logger.info("Task status cleanup job started")
+    
     logger.info(f"Server started with Entra ID authentication")
     logger.info(f"Client ID: {settings.CLIENT_ID}")
     logger.info(f"Tenant ID: {settings.TENANT_ID}")
@@ -91,6 +115,8 @@ app.include_router(student_report_router)  # Include student report router
 app.include_router(student_profile_router)  # Include student profile router
 app.include_router(debug_router)  # Include debug router
 app.include_router(direct_index_router)  # Include direct profile indexer
+app.include_router(task_status_router)  # Include task status router
+app.include_router(debug_cors_router)  # Include debug CORS router
 
 # Include optional routers if available
 if has_content_endpoints:

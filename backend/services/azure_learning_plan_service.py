@@ -90,10 +90,10 @@ class AzureLearningPlanService:
             search_url = f"{self.search_endpoint}/indexes/{self.index_name}/docs/search"
             search_url += f"?api-version=2023-07-01-Preview"
             
-            # Temporary fix: don't filter by owner_id as it doesn't exist in the schema
-            filter_expr = "id ne null"  # A filter that matches all documents
+            # Filter by owner_id or student_id to allow either relationship
+            filter_expr = f"owner_id eq '{user_id}' or student_id eq '{user_id}'"
             if subject:
-                filter_expr = f"subject eq '{subject}'"  # Use direct assignment without AND
+                filter_expr = f"(owner_id eq '{user_id}' or student_id eq '{user_id}') and subject eq '{subject}'"
             
             # Build search body - using field names that match the schema
             search_body = {
@@ -238,7 +238,8 @@ class AzureLearningPlanService:
                                 updated_at=self._parse_datetime(item.get("updated_at")) if item.get("updated_at") else datetime.utcnow(),
                                 start_date=self._parse_datetime(item.get("start_date")) if item.get("start_date") else None,
                                 end_date=self._parse_datetime(item.get("end_date")) if item.get("end_date") else None,
-                                metadata=metadata
+                                metadata=metadata,
+                                owner_id=item.get("owner_id")  # Get owner_id from the document
                             )
                             plans.append(plan)
                         except Exception as e:
@@ -276,6 +277,7 @@ class AzureLearningPlanService:
             simplified_dict = {
                 "id": plan_dict.get("id"),
                 "student_id": plan_dict.get("student_id"),
+                "owner_id": plan_dict.get("owner_id"),  # Include owner_id field
                 "title": plan_dict.get("title", "Learning Plan"),
                 "description": plan_dict.get("description", ""),
                 "subject": plan_dict.get("subject", "General"),
@@ -412,8 +414,8 @@ class AzureLearningPlanService:
             search_url = f"{self.search_endpoint}/indexes/{self.index_name}/docs/search"
             search_url += f"?api-version=2023-07-01-Preview"
             
-            # Temporary fix: don't filter by owner_id as it doesn't exist in the schema
-            filter_expr = f"id eq '{plan_id}'"  # Only filter by plan ID
+            # Get plan by id without any user filtering (we'll check permissions later)
+            filter_expr = f"id eq '{plan_id}'"
             
             # Build search body
             search_body = {
@@ -444,6 +446,17 @@ class AzureLearningPlanService:
                     
                     # Get plan data
                     item = result["value"][0]
+                    
+                    # Check user permission - allow access to both owner and student
+                    stored_owner_id = item.get("owner_id")
+                    stored_student_id = item.get("student_id")
+                    
+                    # For debug logging
+                    logger.info(f"Permission check for plan {plan_id}: user_id={user_id}, owner_id={stored_owner_id}, student_id={stored_student_id}")
+                    
+                    if (stored_owner_id and stored_owner_id != user_id) and (stored_student_id and stored_student_id != user_id):
+                        logger.warning(f"User {user_id} does not have permission to access plan {plan_id}")
+                        return None
                     
                     # Get activities from the complex type collection
                     activities = []
@@ -570,7 +583,8 @@ class AzureLearningPlanService:
                         updated_at=self._parse_datetime(item.get("updated_at")) if item.get("updated_at") else datetime.utcnow(),
                         start_date=self._parse_datetime(item.get("start_date")) if item.get("start_date") else None,
                         end_date=self._parse_datetime(item.get("end_date")) if item.get("end_date") else None,
-                        metadata=metadata
+                        metadata=metadata,
+                        owner_id=item.get("owner_id")  # Include owner_id from the document
                     )
                     
                     return plan
@@ -640,7 +654,7 @@ class AzureLearningPlanService:
             # Save updated plan
             try:
                 logger.info(f"Saving updated plan with {len(plan.activities)} activities")
-                logger.info(f"Plan details before save: id={plan.id}, status={plan.status}, activities={len(plan.activities)}")
+                logger.info(f"Plan details before save: id={plan.id}, status={plan.status}, activities={len(plan.activities)}, owner_id={plan.owner_id}")
                 
                 try:
                     # Convert to dict first to catch any serialization issues

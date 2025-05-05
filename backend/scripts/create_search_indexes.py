@@ -156,6 +156,7 @@ USER_FIELDS = [
 PLAN_FIELDS = [
     {"name": "id", "type": "Edm.String", "key": True, "filterable": True},
     {"name": "student_id", "type": "Edm.String", "filterable": True},
+    {"name": "owner_id", "type": "Edm.String", "filterable": True},  # Added owner_id field
     {"name": "title", "type": "Edm.String", "searchable": True},
     {"name": "description", "type": "Edm.String", "searchable": True},
     {"name": "subject", "type": "Edm.String", "filterable": True, "facetable": True},

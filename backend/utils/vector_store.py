@@ -663,6 +663,90 @@ class AzureSearchVectorStore:
             logger.error(f"Error in filter search: {e}")
             return []
     
+    def _estimate_token_count(self, text: str) -> int:
+        """
+        Estimate token count for a text string.
+        Uses a rough heuristic of ~4 chars per token for GPT models.
+        
+        Args:
+            text: Text to estimate token count for
+            
+        Returns:
+            Estimated token count
+        """
+        # Simple estimation - approximately 4 characters per token for English text
+        return len(text) // 4
+        
+    def _chunk_text(self, text: str, max_tokens: int = 7168) -> str:
+        """
+        Chunk text to stay under token limit, preserving the most important information.
+        
+        Args:
+            text: Text to chunk
+            max_tokens: Maximum tokens allowed (default is 7168, which gives buffer below 8192 limit)
+            
+        Returns:
+            Chunked text that fits within token limit
+        """
+        # If text is already within limits, return it unchanged
+        estimated_tokens = self._estimate_token_count(text)
+        if estimated_tokens <= max_tokens:
+            return text
+            
+        # Otherwise, we need to truncate
+        logger.warning(f"Text exceeds token limit ({estimated_tokens} > {max_tokens}). Truncating...")
+        
+        # Split text into paragraphs
+        paragraphs = text.split("\n\n")
+        
+        # Always keep important metadata paragraphs (title, subject, etc.)
+        # These are typically the first few paragraphs
+        preserved_paragraphs = []
+        content_paragraphs = []
+        
+        # Categorize paragraphs as metadata or content
+        for p in paragraphs:
+            if p.startswith(("Title:", "Subject:", "Content Type:", "Difficulty:", "Description:", "Topics:", "Keywords:")):
+                preserved_paragraphs.append(p)
+            else:
+                content_paragraphs.append(p)
+                
+        # Join metadata paragraphs
+        result = "\n\n".join(preserved_paragraphs)
+        estimated_tokens = self._estimate_token_count(result)
+        
+        # Add content paragraphs until we approach the token limit
+        for p in content_paragraphs:
+            p_tokens = self._estimate_token_count(p)
+            if estimated_tokens + p_tokens <= max_tokens:
+                result += f"\n\n{p}"
+                estimated_tokens += p_tokens
+            else:
+                # If a single paragraph is too long, truncate it
+                if p.startswith("Content:") or p.startswith("Transcription:"):
+                    # Determine how many tokens we have left
+                    tokens_left = max_tokens - estimated_tokens
+                    
+                    # Estimate how many characters that is
+                    chars_left = tokens_left * 4
+                    
+                    # Get the prefix of the paragraph (e.g., "Content: ")
+                    prefix = p.split(":", 1)[0] + ": "
+                    
+                    # Take prefix plus as much content as will fit
+                    truncated_content = p[len(prefix):len(prefix) + chars_left - len(" [truncated]")]
+                    result += f"\n\n{prefix}{truncated_content} [truncated]"
+                    
+                    # No more space for additional paragraphs
+                    break
+                else:
+                    # Skip this paragraph as we're out of space
+                    continue
+        
+        final_token_count = self._estimate_token_count(result)
+        logger.info(f"Text chunked to approximately {final_token_count} tokens")
+        return result
+        
     def _prepare_text_from_content(self, content_item: Dict[str, Any]) -> str:
         """
         Extract text from content item for embedding.
@@ -745,7 +829,10 @@ class AzureSearchVectorStore:
             text_parts.append(f"Transcription: {content_item['metadata_transcription']}")
             
         # Join all parts
-        return "\n\n".join(text_parts)
+        full_text = "\n\n".join(text_parts)
+        
+        # Chunk text to stay under token limit for the embedding model
+        return self._chunk_text(full_text, max_tokens=7168)
 
 # Singleton instance
 vector_store = None

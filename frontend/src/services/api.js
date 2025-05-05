@@ -8,10 +8,11 @@ console.log('🔌 API Client initializing with base URL:', apiUrl);
 
 export const apiClient = axios.create({
   baseURL: apiUrl,
-  timeout: 120000, // Increased timeout to 2 minutes since document processing can take time
+  timeout: 300000, // Increased timeout to 5 minutes since learning plan generation can take time
   headers: {
     'Content-Type': 'application/json'
-  }
+  },
+  withCredentials: true // Enable passing credentials (cookies, auth headers) for CORS requests
 });
 
 // Add request interceptor to add auth token to requests
@@ -19,6 +20,12 @@ apiClient.interceptors.request.use(
   (config) => {
     // Get token from storage (MSAL will handle this internally)
     // We don't need to do anything here as EntraAuthContext already sets the token
+    
+    // Log DELETE requests for debugging
+    if (config.method === 'delete') {
+      console.log(`📤 Sending DELETE request to: ${config.url}`, config);
+    }
+    
     return config;
   },
   (error) => {
@@ -32,6 +39,17 @@ apiClient.interceptors.response.use(
     return response;
   },
   (error) => {
+    // Log CORS errors in detail
+    if (error.message && error.message.includes('CORS')) {
+      console.error('🚫 CORS ERROR DETECTED:', error);
+      console.error('Request details:', {
+        url: error.config?.url,
+        method: error.config?.method,
+        headers: error.config?.headers,
+        baseURL: error.config?.baseURL
+      });
+    }
+    
     // Handle 401 Unauthorized errors (token expired, etc)
     if (error.response && error.response.status === 401) {
       // Redirect to login page if unauthorized
@@ -101,9 +119,19 @@ export const api = {
   
   delete: async (url) => {
     try {
-      const response = await apiClient.delete(url);
+      console.log(`🗑️ Making DELETE request to: ${url}`);
+      
+      // Use custom headers for DELETE requests to help with CORS issues
+      const response = await apiClient.delete(url, {
+        headers: {
+          'Accept': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest'
+        }
+      });
+      console.log(`✅ DELETE request to ${url} succeeded:`, response);
       return response.data;
     } catch (error) {
+      console.error(`❌ DELETE request to ${url} failed:`, error);
       handleApiError(error);
     }
   },

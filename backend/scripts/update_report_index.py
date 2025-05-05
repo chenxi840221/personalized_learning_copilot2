@@ -84,8 +84,6 @@ def update_student_reports_index():
                 ]
             },
             
-            # Store encrypted fields as a string dictionary
-            {"name": "encrypted_fields", "type": "Edm.String"},  # Store as JSON string
             
             # Vector field for embeddings - no metadata for simplicity
             {

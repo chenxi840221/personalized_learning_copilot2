@@ -24,6 +24,14 @@ def setup_cors(app: FastAPI, allowed_origins: List[str] = None):
     if not allowed_origins:
         allowed_origins = ["*"]
         
+    # Set more detailed logging for CORS issues
+    logging.getLogger("fastapi.middleware.cors").setLevel(logging.DEBUG)
+    
+    # Log the configured settings
+    logger.info(f"Setting up CORS with origins: {allowed_origins}")
+    logger.info(f"Setting up CORS with methods: GET, POST, PUT, DELETE, OPTIONS, PATCH")
+    logger.info(f"Setting up CORS with all headers allowed")
+    
     # Add standard CORS middleware
     app.add_middleware(
         CORSMiddleware,
@@ -52,8 +60,15 @@ class PreflightOptionsMiddleware(BaseHTTPMiddleware):
         if request.method == "OPTIONS":
             # Log preflight request
             origin = request.headers.get("origin", "unknown")
+            path = request.url.path
+            headers = request.headers
+            
+            # Log detailed information about the preflight request
             logger.info(f"Handling OPTIONS preflight request from origin: {origin}")
-            logger.info(f"Request path: {request.url.path}")
+            logger.info(f"Request path: {path}")
+            logger.info(f"Request Method: {request.method}")
+            logger.info(f"Access-Control-Request-Method: {headers.get('access-control-request-method')}")
+            logger.info(f"Access-Control-Request-Headers: {headers.get('access-control-request-headers')}")
             
             # Create response with appropriate CORS headers
             response = Response(
@@ -67,6 +82,8 @@ class PreflightOptionsMiddleware(BaseHTTPMiddleware):
                     "Access-Control-Max-Age": "86400",  # 24 hours for preflight caching
                 },
             )
+            
+            logger.info(f"Returning preflight response with headers: {response.headers}")
             return response
             
         # For regular requests, add CORS headers to the response
@@ -75,7 +92,13 @@ class PreflightOptionsMiddleware(BaseHTTPMiddleware):
         # Add CORS headers to every response to ensure they are always present
         origin = request.headers.get("origin")
         if origin:
+            # Add all necessary CORS headers to ensure browsers respect the CORS policy
             response.headers["Access-Control-Allow-Origin"] = origin
             response.headers["Access-Control-Allow-Credentials"] = "true"
+            response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+            response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-Requested-With, Accept"
+            
+            # Log when adding headers to non-OPTIONS requests
+            logger.debug(f"Added CORS headers to {request.method} request for {request.url.path} from {origin}")
         
         return response

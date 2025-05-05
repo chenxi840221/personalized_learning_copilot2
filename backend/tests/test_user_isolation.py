@@ -45,8 +45,7 @@ async def create_test_report(owner_id: str, name_suffix: str = "") -> str:
     logger.info(f"Creating test report for owner {owner_id}")
     
     # Create a student report
-    # Create a student report without encrypted_fields
-    # Since we're creating a simplified version for testing
+    # Create a simplified student report for testing
     report_id = str(uuid.uuid4())
     report_data = {
         "id": report_id,

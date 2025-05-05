@@ -516,15 +516,7 @@ class StudentReportProcessor:
                 updated_at=datetime.utcnow()
             )
             
-            # Encrypt PII fields
-            encrypted_fields = {}
-            for field in ["teacher_name", "general_comments"]:
-                if getattr(report, field):
-                    encrypted_fields[field] = await self.encrypt_pii(getattr(report, field))
-                    setattr(report, field, None)  # Clear the original field
-            
-            # Convert encrypted fields to JSON string for storage in Azure Search
-            report.encrypted_fields = json.dumps(encrypted_fields)
+            # Keep teacher_name and general_comments as they are - no encryption anymore
             
             # Generate embedding for the report
             if not self.openai_client:

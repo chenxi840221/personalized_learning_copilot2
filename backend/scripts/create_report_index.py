@@ -82,15 +82,6 @@ def create_student_reports_index():
                 ]
             },
             
-            # Encrypted PII fields
-            {
-                "name": "encrypted_fields",
-                "type": "Edm.ComplexType",
-                "fields": [
-                    {"name": "teacher_name", "type": "Edm.String"},
-                    {"name": "general_comments", "type": "Edm.String"}
-                ]
-            },
             
             # Vector field for embeddings
             {

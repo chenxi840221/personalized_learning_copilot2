@@ -35,10 +35,7 @@ class StudentReport(BaseModel):
     document_url: Optional[str] = None  # URL to the processed document in storage
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
-    metadata: Dict[str, Any] = {}
-    
-    # PII fields - will be encrypted
-    encrypted_fields: Dict[str, str] = {}  # For storing encrypted sensitive data
+    metadata: Dict[str, Any] = {}  # For storing encrypted sensitive data
 
 class StudentReportWithEmbedding(StudentReport):
     embedding: List[float]

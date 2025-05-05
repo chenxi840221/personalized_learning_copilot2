@@ -216,7 +216,7 @@ export const createLearningPlan = async (subject, learning_period = 'one_month')
  * @param {number} [planData.daily_minutes] - Daily study time in minutes
  * @param {string} [planData.type] - Plan type ('balanced' or 'focused')
  * @param {string} [planData.learning_period] - Learning period (one_week, two_weeks, one_month, two_months, school_term)
- * @returns {Promise<Object>} Created learning plan
+ * @returns {Promise<Object>} Created learning plan task ID for tracking
  */
 export const createProfileBasedPlan = async (planData) => {
   try {
@@ -226,6 +226,74 @@ export const createProfileBasedPlan = async (planData) => {
     console.error('Failed to create profile-based learning plan:', error);
     throw error;
   }
+};
+
+/**
+ * Get task status for a long-running operation like learning plan creation
+ * @param {string} taskId - The task ID to check status for
+ * @returns {Promise<Object>} Task status object
+ */
+export const getTaskStatus = async (taskId) => {
+  try {
+    console.log(`📊 Getting status for task ${taskId}`);
+    return await api.get(`/tasks/status/${taskId}`);
+  } catch (error) {
+    console.error(`Failed to get task status for ${taskId}:`, error);
+    throw error;
+  }
+};
+
+/**
+ * Poll a task until it completes or fails
+ * @param {string} taskId - The task ID to poll
+ * @param {function} onProgress - Callback for progress updates (status object)
+ * @param {function} onError - Callback for errors
+ * @param {number} [interval=2000] - Polling interval in milliseconds
+ * @param {number} [timeout=600000] - Maximum polling time (10 minutes)
+ * @returns {Promise<Object>} Final task result
+ */
+export const pollTaskUntilComplete = async (taskId, onProgress, onError, interval = 2000, timeout = 600000) => {
+  const startTime = Date.now();
+  
+  return new Promise((resolve, reject) => {
+    const checkStatus = async () => {
+      try {
+        // Check if we've exceeded the timeout
+        if (Date.now() - startTime > timeout) {
+          const error = new Error(`Task polling timed out after ${timeout / 1000} seconds`);
+          onError(error);
+          return reject(error);
+        }
+        
+        // Get current status
+        const status = await getTaskStatus(taskId);
+        
+        // Call progress callback
+        onProgress(status);
+        
+        // Check if task is completed or failed
+        if (status.status === 'completed') {
+          console.log(`🎉 Task ${taskId} completed successfully`);
+          return resolve(status.result);
+        } else if (status.status === 'failed') {
+          console.error(`❌ Task ${taskId} failed: ${status.error}`);
+          const error = new Error(status.error || "Task failed");
+          onError(error);
+          return reject(error);
+        }
+        
+        // Still in progress, check again after interval
+        setTimeout(checkStatus, interval);
+      } catch (error) {
+        console.error(`Error polling task ${taskId}:`, error);
+        onError(error);
+        reject(error);
+      }
+    };
+    
+    // Start polling
+    checkStatus();
+  });
 };
 
 /**

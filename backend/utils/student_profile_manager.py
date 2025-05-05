@@ -148,7 +148,7 @@ class StudentProfileManager:
             Extract student profile information from the following student report.
             
             Based on the report, identify the following:
-            - full_name: The student's full name
+            - full_name: The student's full name (IMPORTANT: If there's a "Student:" prefix, remove it and just include the actual name)
             - gender: The student's gender (male, female, or unknown if not clear)
             - grade_level: The student's grade level as a number (e.g., 3 for 3rd grade)
             - learning_style: The student's learning style based on the report (e.g., visual, auditory, kinesthetic, etc.)
@@ -206,9 +206,13 @@ class StudentProfileManager:
             if "interests" not in profile_data or not profile_data["interests"]:
                 profile_data["interests"] = []
             
+            # Clean up student name if present in profile_data (handle "Student:" prefix)
+            if profile_data.get("full_name"):
+                profile_data["full_name"] = self._clean_student_name(profile_data["full_name"])
+            
             # Use the original report data's student_name if extracted name is None
             if not profile_data.get("full_name") and student_name:
-                profile_data["full_name"] = student_name
+                profile_data["full_name"] = self._clean_student_name(student_name)
             
             return profile_data
             
@@ -229,6 +233,9 @@ class StudentProfileManager:
         if not full_name:
             logger.warning("Cannot search for student profile: no name provided")
             return None
+            
+        # Clean the student name to handle "Student:" prefix
+        full_name = self._clean_student_name(full_name)
         
         await self.ensure_initialized()
         
@@ -271,6 +278,7 @@ class StudentProfileManager:
         Args:
             report_data: The processed student report data
             report_id: The ID of the report used to extract profile
+            owner_id: Optional owner ID to associate with the profile (important for access control)
             
         Returns:
             Created or updated student profile, or None if failed
@@ -349,6 +357,11 @@ class StudentProfileManager:
                     logger.info(f"DEBUG: Document to be indexed: {json.dumps(updated_profile)[:500]}...")
                 except:
                     logger.error("Could not dump document JSON")
+                
+                # Add/update owner_id for the profile if provided
+                if owner_id and "owner_id" not in updated_profile:
+                    updated_profile["owner_id"] = owner_id
+                    logger.info(f"Added owner_id {owner_id} to updated profile")
                 
                 # Update the profile in the index
                 try:
@@ -531,6 +544,23 @@ class StudentProfileManager:
         except Exception as e:
             logger.error(f"Error creating/updating student profile: {e}")
             return None
+    
+    def _clean_student_name(self, student_name: str) -> str:
+        """
+        Clean up student name by removing prefixes like "Student:" and standardizing format.
+        
+        Args:
+            student_name: The student name to clean
+            
+        Returns:
+            Cleaned student name
+        """
+        if not student_name:
+            return student_name
+            
+        # Use the clean_student_name function from filename_utils
+        from utils.filename_utils import clean_student_name
+        return clean_student_name(student_name)
     
     def _merge_profile_data(
         self, 

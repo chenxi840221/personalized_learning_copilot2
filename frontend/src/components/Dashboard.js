@@ -2,21 +2,18 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useEntraAuth } from '../hooks/useEntraAuth';
-import { getLearningPlans, getRecommendations, createLearningPlan } from '../services/content';
+import { getLearningPlans, createLearningPlan } from '../services/content';
 import { getStudentProfiles } from '../services/api';
 
 // Components
 import LearningPlan from './LearningPlan';
-import ContentRecommendation from './ContentRecommendation';
 import LearningPlanCreator from './LearningPlanCreator';
 
 const Dashboard = () => {
   const { user } = useAuth();
   const { getAccessToken, isAuthenticated } = useEntraAuth();
   const [learningPlans, setLearningPlans] = useState([]);
-  const [recommendations, setRecommendations] = useState([]);
   const [isLoadingPlans, setIsLoadingPlans] = useState(true);
-  const [isLoadingRecommendations, setIsLoadingRecommendations] = useState(true);
   const [error, setError] = useState('');
   const [isCreatingPlan, setIsCreatingPlan] = useState(false);
   const [selectedSubject, setSelectedSubject] = useState('');
@@ -28,7 +25,7 @@ const Dashboard = () => {
   // Available subjects
   const subjects = ['Mathematics', 'Science', 'English', 'History', 'Geography', 'Art'];
   
-  // Fetch learning plans and recommendations on component mount
+  // Fetch learning plans and student profiles when the component mounts
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -40,17 +37,6 @@ const Dashboard = () => {
         setError('Failed to load learning plans');
       } finally {
         setIsLoadingPlans(false);
-      }
-      
-      try {
-        // Fetch recommendations based on student profile
-        const recs = await getRecommendations();
-        setRecommendations(recs);
-      } catch (err) {
-        console.error('Error fetching recommendations:', err);
-        // Don't set error for recommendations to avoid blocking the UI
-      } finally {
-        setIsLoadingRecommendations(false);
       }
       
       try {
@@ -289,43 +275,6 @@ const Dashboard = () => {
         )}
       </div>
       
-      {/* Recommendations Section */}
-      <div className="bg-white rounded-lg shadow-md p-4 sm:p-6">
-        <h2 className="text-xl font-bold text-gray-800 mb-6">Recommended Educational Resources</h2>
-        
-        {isLoadingRecommendations ? (
-          <div className="text-center py-8">
-            <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
-            <p className="mt-2 text-gray-500">Loading recommendations...</p>
-          </div>
-        ) : recommendations.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {recommendations.slice(0, 6).map(content => (
-              <ContentRecommendation key={content.id} content={content} />
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-8 bg-gray-50 rounded-lg">
-            <p className="text-gray-500">No recommendations available at the moment.</p>
-            <p className="text-gray-500 mt-2">
-              <Link to="/content" className="text-blue-600 hover:underline">
-                Browse all content →
-              </Link>
-            </p>
-          </div>
-        )}
-        
-        {recommendations.length > 6 && (
-          <div className="text-center mt-6">
-            <Link
-              to="/content"
-              className="text-blue-600 hover:underline font-medium"
-            >
-              View all recommendations →
-            </Link>
-          </div>
-        )}
-      </div>
     </div>
   );
 };

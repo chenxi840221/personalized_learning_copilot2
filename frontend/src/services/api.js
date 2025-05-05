@@ -213,6 +213,16 @@ export const getReport = async (reportId) => {
   }
 };
 
+export const updateReport = async (reportId, reportData) => {
+  try {
+    console.log('🔄 Updating student report with ID:', reportId);
+    return await api.put(`/student-reports/${reportId}`, reportData);
+  } catch (error) {
+    console.error('Error updating report:', error);
+    throw error;
+  }
+};
+
 export const deleteReport = async (reportId) => {
   try {
     return await api.delete(`/student-reports/${reportId}`);

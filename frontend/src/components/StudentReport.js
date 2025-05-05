@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useEntraAuth } from '../hooks/useEntraAuth';
 import { useLocation } from 'react-router-dom';
-import { uploadReport, getReports, getReport, deleteReport, apiClient } from '../services/api';
+import { uploadReport, getReports, getReport, updateReport, deleteReport, apiClient } from '../services/api';
 import TestApiReport from './TestApiReport';
 
 const StudentReport = () => {
@@ -21,6 +21,9 @@ const StudentReport = () => {
   const [lastFetchTime, setLastFetchTime] = useState(0);
   const fetchTimeoutRef = useRef(null);
   const [tokenRefreshed, setTokenRefreshed] = useState(false);
+  const [editingReport, setEditingReport] = useState(null);
+  const [editFormData, setEditFormData] = useState({});
+  const [updating, setUpdating] = useState(false);
   
   // Forward declaration of fetchReports for use in useCallback
   const fetchReportsRef = useRef(null);
@@ -525,6 +528,111 @@ const StudentReport = () => {
   const closeReportDetail = () => {
     setSelectedReport(null);
   };
+  
+  const handleEditReport = (report) => {
+    // Initialize edit form with current report data
+    setEditingReport(report);
+    
+    // Handle grade level - ensure it's a number, with preschool/kindergarten as 0
+    let gradeLevel = 0; // Default to 0 (Preschool/Kindergarten)
+    if (report.grade_level !== undefined && report.grade_level !== null) {
+      // Ensure it's a number
+      gradeLevel = typeof report.grade_level === 'number' ? report.grade_level : Number(report.grade_level);
+      // Handle potential NaN
+      if (isNaN(gradeLevel)) {
+        gradeLevel = 0;
+      }
+    }
+    
+    setEditFormData({
+      student_name: report.student_name || '',
+      school_name: report.school_name || '',
+      school_year: report.school_year || '',
+      term: report.term || '',
+      grade_level: gradeLevel,
+      teacher_name: report.teacher_name || '',
+      report_date: report.report_date || '',
+      general_comments: report.general_comments || '',
+      // Copy subjects array to avoid modifying the original
+      subjects: report.subjects ? JSON.parse(JSON.stringify(report.subjects)) : [],
+      update_profile: true // By default, update the student profile with changes
+    });
+  };
+  
+  const handleEditFormChange = (field, value) => {
+    // Special handling for grade_level
+    if (field === 'grade_level') {
+      // Ensure it's a number
+      const numValue = typeof value === 'number' ? value : 
+                       (value === '' || value === null || value === undefined) ? 0 : 
+                       Number(value);
+      
+      // Set the value as a number
+      setEditFormData(prev => ({
+        ...prev,
+        [field]: numValue
+      }));
+    } else {
+      // Handle regular fields
+      setEditFormData(prev => ({
+        ...prev,
+        [field]: value
+      }));
+    }
+  };
+  
+  const handleSubjectChange = (index, field, value) => {
+    const updatedSubjects = [...editFormData.subjects];
+    updatedSubjects[index] = {
+      ...updatedSubjects[index],
+      [field]: value
+    };
+    
+    setEditFormData(prev => ({
+      ...prev,
+      subjects: updatedSubjects
+    }));
+  };
+  
+  const handleUpdateReport = async () => {
+    if (!editingReport) return;
+    
+    setUpdating(true);
+    setError('');
+    setSuccessMessage('');
+    
+    try {
+      // Send update request to API
+      const updatedReport = await updateReport(editingReport.id, editFormData);
+      
+      // Update the report in the local state
+      setReports(prevReports => 
+        prevReports.map(report => 
+          report.id === updatedReport.id ? updatedReport : report
+        )
+      );
+      
+      // Close the edit form and show success message
+      setEditingReport(null);
+      setEditFormData({});
+      setSuccessMessage('Student report updated successfully');
+      
+      // If we were viewing this report, update the selected report view
+      if (selectedReport && selectedReport.id === updatedReport.id) {
+        setSelectedReport(updatedReport);
+      }
+    } catch (err) {
+      console.error('Error updating report:', err);
+      setError('Failed to update the report. Please try again.');
+    } finally {
+      setUpdating(false);
+    }
+  };
+  
+  const cancelEdit = () => {
+    setEditingReport(null);
+    setEditFormData({});
+  };
 
   // Format date for display
   const formatDate = (dateString) => {
@@ -686,10 +794,13 @@ const StudentReport = () => {
                       </div>
                     )}
                     
-                    {report.grade_level && (
+                    {report.grade_level !== undefined && (
                       <div className="text-sm">
                         <span className="font-medium text-gray-500">Grade Level:</span>{' '}
-                        <span className="text-gray-900">{report.grade_level}</span>
+                        <span className="text-gray-900">
+                          {report.grade_level === 0 ? 'Preschool/Kindergarten' : 
+                           `Grade ${report.grade_level}`}
+                        </span>
                       </div>
                     )}
                   </div>
@@ -726,15 +837,27 @@ const StudentReport = () => {
                       View Details
                     </button>
                     
-                    <button
-                      onClick={() => handleDeleteReport(report.id)}
-                      className="inline-flex items-center px-3 py-1.5 border border-gray-300 text-sm font-medium rounded text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
-                      Delete
-                    </button>
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={() => handleEditReport(report)}
+                        className="inline-flex items-center px-3 py-1.5 border border-green-300 text-sm font-medium rounded text-green-700 bg-white hover:bg-green-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                        Edit
+                      </button>
+                      
+                      <button
+                        onClick={() => handleDeleteReport(report.id)}
+                        className="inline-flex items-center px-3 py-1.5 border border-gray-300 text-sm font-medium rounded text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                        Delete
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -743,6 +866,195 @@ const StudentReport = () => {
           </div>
         )}
       </div>
+      
+      {/* Edit Report Modal */}
+      {editingReport && (
+        <div className="fixed inset-0 overflow-y-auto z-50">
+          <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div className="fixed inset-0 transition-opacity" aria-hidden="true">
+              <div className="absolute inset-0 bg-gray-500 opacity-75"></div>
+            </div>
+            
+            <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+            
+            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-5xl sm:w-full">
+              <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                <h2 className="text-xl font-semibold mb-4">Edit Student Report</h2>
+                
+                <form className="space-y-6">
+                  {/* General Information */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Student Name</label>
+                      <input
+                        type="text"
+                        value={editFormData.student_name || ''}
+                        onChange={(e) => handleEditFormChange('student_name', e.target.value)}
+                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">School Name</label>
+                      <input
+                        type="text"
+                        value={editFormData.school_name || ''}
+                        onChange={(e) => handleEditFormChange('school_name', e.target.value)}
+                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">School Year</label>
+                      <input
+                        type="text"
+                        value={editFormData.school_year || ''}
+                        onChange={(e) => handleEditFormChange('school_year', e.target.value)}
+                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Term</label>
+                      <input
+                        type="text"
+                        value={editFormData.term || ''}
+                        onChange={(e) => handleEditFormChange('term', e.target.value)}
+                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Grade Level</label>
+                      <select
+                        value={editFormData.grade_level !== undefined ? editFormData.grade_level : 0}
+                        onChange={(e) => handleEditFormChange('grade_level', Number(e.target.value))}
+                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                      >
+                        <option value={0}>Preschool/Kindergarten</option>
+                        <option value={1}>Grade 1</option>
+                        <option value={2}>Grade 2</option>
+                        <option value={3}>Grade 3</option>
+                        <option value={4}>Grade 4</option>
+                        <option value={5}>Grade 5</option>
+                        <option value={6}>Grade 6</option>
+                        <option value={7}>Grade 7</option>
+                        <option value={8}>Grade 8</option>
+                        <option value={9}>Grade 9</option>
+                        <option value={10}>Grade 10</option>
+                        <option value={11}>Grade 11</option>
+                        <option value={12}>Grade 12</option>
+                      </select>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Teacher Name</label>
+                      <input
+                        type="text"
+                        value={editFormData.teacher_name || ''}
+                        onChange={(e) => handleEditFormChange('teacher_name', e.target.value)}
+                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                      />
+                    </div>
+                  </div>
+                  
+                  {/* General Comments */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">General Comments</label>
+                    <textarea
+                      value={editFormData.general_comments || ''}
+                      onChange={(e) => handleEditFormChange('general_comments', e.target.value)}
+                      rows={4}
+                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                    />
+                  </div>
+                  
+                  {/* Subjects */}
+                  <div>
+                    <h3 className="text-md font-medium text-gray-700 mb-2">Subjects</h3>
+                    <div className="space-y-4">
+                      {editFormData.subjects && editFormData.subjects.map((subject, index) => (
+                        <div key={index} className="border border-gray-200 rounded-lg p-4">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700">Subject Name</label>
+                              <input
+                                type="text"
+                                value={subject.name || ''}
+                                onChange={(e) => handleSubjectChange(index, 'name', e.target.value)}
+                                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                              />
+                            </div>
+                            
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700">Achievement Level</label>
+                              <input
+                                type="text"
+                                value={subject.achievement_level || ''}
+                                onChange={(e) => handleSubjectChange(index, 'achievement_level', e.target.value)}
+                                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                              />
+                            </div>
+                          </div>
+                          
+                          <div className="mb-3">
+                            <label className="block text-sm font-medium text-gray-700">Comments</label>
+                            <textarea
+                              value={subject.comments || ''}
+                              onChange={(e) => handleSubjectChange(index, 'comments', e.target.value)}
+                              rows={3}
+                              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  
+                  {/* Update Student Profile Option */}
+                  <div>
+                    <div className="flex items-center">
+                      <input
+                        id="update_profile"
+                        type="checkbox"
+                        checked={editFormData.update_profile}
+                        onChange={(e) => handleEditFormChange('update_profile', e.target.checked)}
+                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                      />
+                      <label htmlFor="update_profile" className="ml-2 block text-sm text-gray-900">
+                        Update student profile with these changes
+                      </label>
+                    </div>
+                    <p className="mt-1 text-sm text-gray-500">
+                      If checked, the student profile will be updated with the changes made to this report.
+                    </p>
+                  </div>
+                </form>
+                
+                {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
+              </div>
+              
+              <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                <button
+                  type="button"
+                  onClick={handleUpdateReport}
+                  disabled={updating}
+                  className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50"
+                >
+                  {updating ? 'Updating...' : 'Save Changes'}
+                </button>
+                <button
+                  type="button"
+                  onClick={cancelEdit}
+                  className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       
       {/* Report Detail Modal */}
       {selectedReport && (
@@ -780,7 +1092,9 @@ const StudentReport = () => {
                           </p>
                           <p>
                             <span className="font-medium">Grade Level: </span>
-                            {selectedReport.grade_level || 'N/A'}
+                            {selectedReport.grade_level !== undefined ? 
+                              (selectedReport.grade_level === 0 ? 'Preschool/Kindergarten' : 
+                              `Grade ${selectedReport.grade_level}`) : 'N/A'}
                           </p>
                         </div>
                         
@@ -936,6 +1250,16 @@ const StudentReport = () => {
                   className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
                 >
                   Close
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    closeReportDetail();
+                    handleEditReport(selectedReport);
+                  }}
+                  className="mt-3 w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-green-600 text-base font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
+                >
+                  Edit Report
                 </button>
               </div>
             </div>

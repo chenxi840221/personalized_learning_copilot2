@@ -9,11 +9,13 @@ import json
 import copy
 import logging
 import traceback
+import re
 
 from models.student_report import StudentReport, ReportType
 from auth.entra_auth import get_current_user
 from utils.report_processor import get_report_processor
 from utils.student_profile_manager import get_student_profile_manager
+from utils.filename_utils import extract_student_name_from_filename
 from config.settings import Settings
 from services.search_service import get_search_service
 
@@ -25,7 +27,6 @@ logger = logging.getLogger(__name__)
 
 # Create router
 router = APIRouter(prefix="/student-reports", tags=["student-reports"])
-
 @router.post("/upload")
 async def upload_student_report(
     file: UploadFile = File(...),
@@ -57,10 +58,26 @@ async def upload_student_report(
         logger.info("Initializing report processor")
         report_processor = await get_report_processor()
         
+        # Try to extract student name from filename first
+        filename_student_name = extract_student_name_from_filename(file.filename)
+        if filename_student_name:
+            logger.info(f"Successfully extracted student name from filename: '{filename_student_name}'")
+        else:
+            logger.info(f"Could not extract student name from filename: '{file.filename}'")
+            
         # Process the report
         student_id = current_user["id"]
         logger.info(f"Processing report for student ID: {student_id}")
         processed_report = await report_processor.process_report_document(temp_path, student_id)
+        
+        # Add filename-extracted student name to the processed report if available
+        if filename_student_name and not processed_report.get("student_name"):
+            logger.info(f"Using filename-extracted student name: '{filename_student_name}'")
+            processed_report["student_name"] = filename_student_name
+            # Store the source in metadata that won't be sent to the search index
+            # Using a field called metadata_json that we'll exclude during indexing
+            processed_report["metadata_json"] = json.dumps({"name_source": "filename"})
+            processed_report["student_name_source"] = "filename" # For compatibility
         
         if not processed_report:
             logger.error("Report processing failed: no processed report returned")
@@ -166,7 +183,53 @@ async def upload_student_report(
                 
                 # Try to extract student name from the processed report
                 if "student_name" in processed_report and processed_report["student_name"]:
-                    student_name = processed_report["student_name"]
+                    # Get the raw name and clean it (remove "Student:" prefix if present)
+                    raw_name = processed_report["student_name"]
+                    
+                    # Check if the student name was already extracted from filename
+                    # First try to get name_source from student_name_source field
+                    name_source = processed_report.get("student_name_source")
+                    
+                    # If not found, try to get from metadata_json
+                    if not name_source and processed_report.get("metadata_json"):
+                        try:
+                            metadata = json.loads(processed_report["metadata_json"])
+                            name_source = metadata.get("name_source")
+                        except:
+                            pass
+                            
+                    if name_source == "filename":
+                        logger.info(f"Using previously extracted student name from filename: '{raw_name}'")
+                        student_name = raw_name  # Already clean
+                    else:
+                        # Clean up student name
+                        if "student:" in raw_name.lower():
+                            # Split by "Student:" or "Student :" (case insensitive) and take the second part
+                            parts = re.split(r"student\s*:", raw_name, flags=re.IGNORECASE)
+                            if len(parts) > 1:
+                                student_name = parts[1].strip()
+                                logger.info(f"Cleaned student name by removing 'Student:' prefix: '{student_name}'")
+                            else:
+                                student_name = raw_name.strip()
+                                logger.info(f"Could not split student name but trimmed whitespace: '{student_name}'")
+                        else:
+                            student_name = raw_name.strip()
+                            logger.info(f"No 'Student:' prefix found, trimmed whitespace: '{student_name}'")
+                        
+                        # Update the processed report with the cleaned name
+                        processed_report["student_name"] = student_name
+                        # Store name source in metadata that will be excluded from indexing
+                        processed_report["metadata_json"] = json.dumps({"name_source": "report_content"})
+                        processed_report["student_name_source"] = "report_content" # For compatibility
+                        logger.info(f"Cleaned student name: '{student_name}' (original: '{raw_name}')")
+                
+                # If still no student name, try to extract from filename again
+                elif filename_student_name:
+                    logger.info(f"No student name in report, using filename-extracted name: '{filename_student_name}'")
+                    processed_report["student_name"] = filename_student_name
+                    # Store name source in metadata that will be excluded from indexing
+                    processed_report["metadata_json"] = json.dumps({"name_source": "filename_fallback"})
+                    processed_report["student_name_source"] = "filename_fallback" # For compatibility
                 else:
                     # Try to extract student name from structured fields
                     # This might require decrypting PII fields
@@ -671,6 +734,180 @@ async def get_student_report(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error getting student report: {str(e)}"
+        )
+
+@router.put("/{report_id}")
+async def update_student_report(
+    report_id: str = Path(..., description="Report ID"),
+    report_data: Dict[str, Any] = None,
+    current_user: Dict = Depends(get_current_user)
+):
+    """Update a student report."""
+    # Ensure the user is authorized
+    if not current_user or not current_user.get("id"):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated"
+        )
+        
+    # Ensure report_data is provided
+    if not report_data:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Report data is required"
+        )
+    
+    try:
+        # Get search service
+        search_service = await get_search_service()
+        
+        # Check if search service is available
+        if not search_service:
+            logger.warning("Search service not available.")
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Search service is currently unavailable. Please try again later."
+            )
+            
+        # Check if reports index is configured    
+        if not settings.REPORTS_INDEX_NAME:
+            logger.warning("Reports index name not configured.")
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Report update service is not properly configured."
+            )
+        
+        try:
+            # Verify the report exists and belongs to the user
+            filter_expression = f"id eq '{report_id}' and owner_id eq '{current_user['id']}'"
+            reports = await search_service.search_documents(
+                index_name=settings.REPORTS_INDEX_NAME,
+                query="*",
+                filter=filter_expression,
+                top=1
+            )
+            
+            if not reports:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"Report with ID {report_id} not found"
+                )
+            
+            # Get the existing report
+            existing_report = reports[0]
+            
+            # Merge the existing report with the updated data
+            updated_report = {**existing_report}
+            
+            # Only allow updating certain fields
+            allowed_fields = [
+                "student_name", "school_name", "school_year", "term", "grade_level",
+                "teacher_name", "report_date", "general_comments", "subjects"
+            ]
+            
+            # Update allowed fields
+            for field in allowed_fields:
+                if field in report_data:
+                    # Special handling for grade_level
+                    if field == "grade_level":
+                        grade_level = report_data[field]
+                        if grade_level is not None:
+                            if isinstance(grade_level, (int, float)):
+                                # Already a number, just convert to int
+                                updated_report[field] = int(grade_level)
+                            elif isinstance(grade_level, str):
+                                try:
+                                    # First, check for specific keywords like "Preschool", "Kindergarten", etc.
+                                    grade_text = grade_level.lower()
+                                    if any(keyword in grade_text for keyword in ["preschool", "pre-school", "pre school", "nursery"]):
+                                        # Preschool is level 0
+                                        updated_report[field] = 0
+                                    elif any(keyword in grade_text for keyword in ["kindergarten", "kinder", "k-"]):
+                                        # Kindergarten is level 0
+                                        updated_report[field] = 0
+                                    else:
+                                        # Extract numbers from grade level if it contains text
+                                        import re
+                                        numbers = re.findall(r'\d+', grade_level)
+                                        if numbers:
+                                            updated_report[field] = int(numbers[0])
+                                        else:
+                                            # Default to 0 if no number found and it's not a recognized keyword
+                                            updated_report[field] = 0
+                                            logger.info(f"Could not extract numeric grade level from '{grade_level}', defaulting to 0")
+                                except (ValueError, TypeError) as e:
+                                    # If conversion fails, use 0 as the default value
+                                    logger.warning(f"Error converting grade level '{grade_level}' to int: {e}. Defaulting to 0.")
+                                    updated_report[field] = 0
+                            else:
+                                # Unknown type, default to 0
+                                logger.warning(f"Grade level has unknown type {type(grade_level)}, defaulting to 0")
+                                updated_report[field] = 0
+                        else:
+                            # If grade_level is None, default to 0
+                            updated_report[field] = 0
+                    else:
+                        # Regular field, just copy the value
+                        updated_report[field] = report_data[field]
+            
+            # Add update timestamp
+            updated_report["updated_at"] = datetime.utcnow().isoformat()
+            
+            # Update the report in the index
+            success = await search_service.index_document(
+                index_name=settings.REPORTS_INDEX_NAME,
+                document=updated_report
+            )
+            
+            if not success:
+                logger.error(f"Report update failed for ID: {report_id}")
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="Failed to update the student report"
+                )
+            
+            # Check if we need to update student profile based on updated report
+            if report_data.get("update_profile", False):
+                logger.info(f"Updating student profile based on report updates for: {report_id}")
+                try:
+                    # Get the student profile manager
+                    profile_manager = await get_student_profile_manager()
+                    
+                    if profile_manager:
+                        # Update the student profile
+                        profile_result = await profile_manager.create_or_update_student_profile(
+                            updated_report, 
+                            report_id,
+                            owner_id=current_user.get("id")
+                        )
+                        
+                        if profile_result:
+                            logger.info(f"Successfully updated student profile for report: {report_id}")
+                            updated_report["profile_updated"] = True
+                            updated_report["student_profile_id"] = profile_result.get("id")
+                        else:
+                            logger.error(f"Failed to update student profile for report: {report_id}")
+                            updated_report["profile_updated"] = False
+                except Exception as profile_err:
+                    logger.error(f"Error updating student profile: {profile_err}")
+                    updated_report["profile_updated"] = False
+            
+            return updated_report
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Error during report update process: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Error updating report: {str(e)}"
+            )
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error updating student report: {str(e)}"
         )
 
 @router.delete("/{report_id}")

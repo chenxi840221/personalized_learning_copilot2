@@ -207,7 +207,16 @@ class SearchService:
         cleaned_doc = document.copy()
         
         # List of fields that are not defined in the search index schema
-        invalid_fields = ['_debug_info', 'metadata']
+        invalid_fields = [
+            '_debug_info', 
+            'metadata', 
+            'metadata_json',        # Our new metadata field for internal use
+            'student_name_source',  # This field isn't in the schema
+            'profile_processed',    # Temporary flag for processing status
+            'profile_updated',      # Flag for profile update status
+            'indexing_status',      # Only if not defined in schema
+            'additional_fields'     # Seems to be causing schema issues
+        ]
         
         # Ensure owner_id is included (important for user-based access control)
         if 'owner_id' not in cleaned_doc:
@@ -279,24 +288,7 @@ class SearchService:
                             else:
                                 subj[field] = []
         
-        # Ensure additional_fields is a dictionary
-        if 'additional_fields' in cleaned_doc:
-            # If it's a string (JSON), try to parse it
-            if isinstance(cleaned_doc['additional_fields'], str):
-                try:
-                    cleaned_doc['additional_fields'] = json.loads(cleaned_doc['additional_fields'])
-                except (TypeError, ValueError):
-                    # If it can't be parsed, set to an empty dict
-                    cleaned_doc['additional_fields'] = {
-                        'teacher_name': '',
-                        'general_comments': ''
-                    }
-            # If it's neither a dict nor a string, set to an empty dict
-            elif not isinstance(cleaned_doc['additional_fields'], dict):
-                cleaned_doc['additional_fields'] = {
-                    'teacher_name': '',
-                    'general_comments': ''
-                }
+        # We're now completely removing additional_fields in the invalid_fields list above
                 
         # Log what we're about to index    
         logger.info(f"Prepared document for indexing: ID={cleaned_doc.get('id')}")

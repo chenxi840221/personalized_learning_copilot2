@@ -58,6 +58,8 @@ def update_student_reports_index():
             {"name": "document_url", "type": "Edm.String"},
             {"name": "teacher_name", "type": "Edm.String", "searchable": True},
             {"name": "general_comments", "type": "Edm.String", "searchable": True},
+            {"name": "student_name", "type": "Edm.String", "searchable": True, "filterable": True},
+            {"name": "student_name_source", "type": "Edm.String"},
             
             # Subjects as a complex collection
             {

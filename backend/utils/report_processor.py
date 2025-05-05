@@ -483,19 +483,42 @@ class StudentReportProcessor:
             
             # Parse grade level to integer if possible
             grade_level = structured_data.get("grade_level")
-            if grade_level and isinstance(grade_level, str):
-                try:
-                    # Extract numbers from grade level if it contains text
-                    import re
-                    numbers = re.findall(r'\d+', grade_level)
-                    if numbers:
-                        grade_level = int(numbers[0])
-                    else:
-                        # Default to a reasonable value if no number found
-                        grade_level = 1
-                except (ValueError, TypeError):
-                    # If conversion fails, use a default value
-                    grade_level = 1
+            if grade_level is not None:
+                if isinstance(grade_level, (int, float)):
+                    # Already a number, just convert to int
+                    grade_level = int(grade_level)
+                elif isinstance(grade_level, str):
+                    try:
+                        # First, check for specific keywords like "Preschool", "Kindergarten", etc.
+                        grade_text = grade_level.lower()
+                        if any(keyword in grade_text for keyword in ["preschool", "pre-school", "pre school", "nursery"]):
+                            # Preschool is level 0
+                            grade_level = 0
+                        elif any(keyword in grade_text for keyword in ["kindergarten", "kinder", "k-"]):
+                            # Kindergarten is level 0
+                            grade_level = 0
+                        else:
+                            # Extract numbers from grade level if it contains text
+                            import re
+                            numbers = re.findall(r'\d+', grade_level)
+                            if numbers:
+                                grade_level = int(numbers[0])
+                            else:
+                                # Default to 0 if no number found and it's not a recognized keyword
+                                grade_level = 0
+                                logger.info(f"Could not extract numeric grade level from '{grade_level}', defaulting to 0")
+                    except (ValueError, TypeError) as e:
+                        # If conversion fails, use 0 as the default value
+                        logger.warning(f"Error converting grade level '{grade_level}' to int: {e}. Defaulting to 0.")
+                        grade_level = 0
+                else:
+                    # Unknown type, default to 0
+                    logger.warning(f"Grade level has unknown type {type(grade_level)}, defaulting to 0")
+                    grade_level = 0
+            else:
+                # If grade_level is None, default to 0
+                grade_level = 0
+                logger.info("No grade level found in structured data, defaulting to 0")
             
             # Create StudentReport object
             report = StudentReport(
@@ -650,11 +673,12 @@ class StudentReportProcessor:
             prompt = f"""
             Extract structured information from this student report. 
             Identify the following information:
+            - student_name (IMPORTANT: The full name of the student. If it appears with a "Student:" prefix, remove the prefix and just include the actual name)
             - report_type (primary, secondary, special_ed, standardized_test)
             - school_name
             - school_year
             - term
-            - grade_level (as a number)
+            - grade_level (as a number, use 0 for preschool and kindergarten)
             - teacher_name
             - report_date (in YYYY-MM-DD format)
             - subjects (list of subjects with the following structure:
@@ -676,7 +700,7 @@ class StudentReportProcessor:
             1. Format the response as a valid JSON object
             2. For arrays like areas_for_improvement and strengths, always use proper JSON array syntax like ["item1", "item2"]
             3. Do not use single strings where arrays are expected
-            4. For grade_level, convert to a numeric value (e.g., "Fifth Grade" should be 5)
+            4. For grade_level, convert to a numeric value (e.g., "Fifth Grade" should be 5, "Preschool" or "Kindergarten" should be 0)
             
             Here is the report text:
             {text[:4000]}  # Truncate to stay within token limits
@@ -692,6 +716,14 @@ class StudentReportProcessor:
             # Parse the JSON response
             content = response["choices"][0]["message"]["content"]
             structured_data = json.loads(content)
+            
+            # Clean up student name if present (remove "Student:" prefix if present)
+            if "student_name" in structured_data and structured_data["student_name"]:
+                # Use the improved clean_student_name function from filename_utils
+                from utils.filename_utils import clean_student_name
+                raw_name = structured_data["student_name"]
+                structured_data["student_name"] = clean_student_name(raw_name)
+                logger.info(f"Extracted and cleaned student name: '{structured_data['student_name']}' (original: '{raw_name}')")
             
             # Try to convert report_date to datetime if provided
             if "report_date" in structured_data and structured_data["report_date"]:

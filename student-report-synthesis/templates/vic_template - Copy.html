@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ data.student.name.full_name }} - VIC School Report</title>
+    <!-- Use local Bootstrap instead of CDN -->
+    <style>
+        /* Bootstrap base styles - include only what's needed */
+        .container{width:100%;padding-right:var(--bs-gutter-x,.75rem);padding-left:var(--bs-gutter-x,.75rem);margin-right:auto;margin-left:auto}@media (min-width:576px){.container{max-width:540px}}@media (min-width:768px){.container{max-width:720px}}@media (min-width:992px){.container{max-width:960px}}@media (min-width:1200px){.container{max-width:1140px}}@media (min-width:1400px){.container{max-width:1320px}}
+        .row{--bs-gutter-x:1.5rem;--bs-gutter-y:0;display:flex;flex-wrap:wrap;margin-top:calc(var(--bs-gutter-y) * -1);margin-right:calc(var(--bs-gutter-x) * -.5);margin-left:calc(var(--bs-gutter-x) * -.5)}.row>*{flex-shrink:0;width:100%;max-width:100%;padding-right:calc(var(--bs-gutter-x) * .5);padding-left:calc(var(--bs-gutter-x) * .5);margin-top:var(--bs-gutter-y)}
+        .col-md-3{flex:0 0 auto;width:25%}.col-md-4{flex:0 0 auto;width:33.33333333%}.col-md-6{flex:0 0 auto;width:50%}.col-md-12{flex:0 0 auto;width:100%}
+        .table{width:100%;margin-bottom:1rem;color:#212529;vertical-align:top;border-color:#dee2e6}.table>:not(caption)>*>*{padding:.5rem .5rem;border-bottom-width:1px}.table-bordered>:not(caption)>*{border-width:1px 0}.table-bordered>:not(caption)>*>*{border-width:0 1px}
+        .mt-1{margin-top:.25rem!important}.mt-2{margin-top:.5rem!important}.mt-3{margin-top:1rem!important}.mt-4{margin-top:1.5rem!important}.mt-5{margin-top:3rem!important}
+        .mb-1{margin-bottom:.25rem!important}.mb-2{margin-bottom:.5rem!important}.mb-3{margin-bottom:1rem!important}.mb-4{margin-bottom:1.5rem!important}.mb-5{margin-bottom:3rem!important}
+        .ms-1{margin-left:.25rem!important}.ms-2{margin-left:.5rem!important}.ms-3{margin-left:1rem!important}
+        .me-1{margin-right:.25rem!important}.me-2{margin-right:.5rem!important}.me-3{margin-right:1rem!important}
+        .text-center{text-align:center!important}.text-end{text-align:right!important}.text-start{text-align:left!important}
+        
+        /* Custom styles for Victoria template */
+        body {
+            font-family: Arial, sans-serif;
+            color: #333;
+        }
+        .page {
+            page-break-after: always;
+            margin-bottom: 30px;
+            padding-bottom: 30px;
+            border-bottom: 1px dashed #ccc;
+        }
+        .page:last-child {
+            page-break-after: avoid;
+            border-bottom: none;
+        }
+        .cover-page {
+            text-align: center;
+            padding: 40px 20px;
+        }
+        .cover-header {
+            position: relative;
+            margin-bottom: 30px;
+        }
+        .school-logo {
+            max-height: 100px;
+            margin-bottom: 20px;
+        }
+        .vic-logo {
+            max-width: 300px;
+            position: absolute;
+            top: 0;
+            right: 0;
+        }
+        .school-name {
+            font-size: 2.2rem;
+            font-weight: bold;
+            color: #00437d;
+            margin-bottom: 20px;
+            clear: both;
+        }
+        .report-title {
+            font-size: 1.8rem;
+            margin: 1rem 0;
+            color: #00437d;
+        }
+        .student-photo {
+            width: 150px;
+            height: 200px;
+            object-fit: cover;
+            border: 1px solid #ddd;
+            padding: 5px;
+            background-color: #f8f8f8;
+            margin: 20px auto;
+            display: block;
+        }
+        .student-photo-placeholder {
+            width: 150px;
+            height: 200px;
+            line-height: 200px;
+            text-align: center;
+            border: 1px solid #ddd;
+            background-color: #f8f8f8;
+            color: #999;
+            font-size: 14px;
+            margin: 20px auto;
+        }
+        .signatures {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 50px;
+        }
+        .signature-box {
+            text-align: center;
+            width: 40%;
+        }
+        .signature-line {
+            border-top: 1px solid #000;
+            margin-top: 50px;
+            padding-top: 5px;
+        }
+        .report-guide {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 5px;
+            margin: 20px 0;
+            border-left: 5px solid #00437d;
+        }
+        .report-guide h4 {
+            color: #00437d;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+        }
+        .achievement-scale {
+            margin: 20px 0;
+        }
+        .achievement-scale-header {
+            background-color: #00437d;
+            color: white;
+            padding: 10px;
+            font-weight: bold;
+        }
+        .scale-item {
+            padding: 8px;
+            border: 1px solid #ddd;
+            margin-bottom: 5px;
+        }
+        .scale-item strong {
+            color: #00437d;
+        }
+        .personal-details {
+            background-color: #f0f7ff;
+            padding: 20px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .personal-comment {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-left: 5px solid #00437d;
+            margin: 15px 0;
+        }
+        .attendance-box {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .attendance-summary {
+            display: flex;
+            justify-content: space-between;
+            text-align: center;
+            margin-top: 15px;
+        }
+        .attendance-item {
+            background-color: #fff;
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            width: 23%;
+        }
+        .attendance-number {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #00437d;
+        }
+        .subject-overview {
+            background-color: #f0f7ff;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+        }
+        .subject-name {
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: #00437d;
+            margin-bottom: 10px;
+        }
+        .achievement-bar {
+            height: 25px;
+            background-color: #ddd;
+            position: relative;
+            border-radius: 15px;
+            margin: 15px 0;
+            overflow: hidden;
+        }
+        .achievement-indicator {
+            height: 25px;
+            background-color: #00437d;
+            position: absolute;
+            border-radius: 15px;
+        }
+        .achievement-marker {
+            position: absolute;
+            top: -10px;
+            width: 3px;
+            height: 45px;
+            background-color: #ff6b6b;
+        }
+        .achievement-labels {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 5px;
+            font-size: 0.8rem;
+            color: #666;
+        }
+        .subject-comment {
+            margin: 15px 0;
+            padding: 10px;
+            background-color: #fff;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .subject-feedback {
+            margin: 15px 0;
+        }
+        .subject-feedback h5 {
+            color: #00437d;
+            font-size: 1rem;
+            margin-bottom: 10px;
+        }
+        .subject-feedback ul {
+            margin-left: 20px;
+            padding-left: 0;
+        }
+        .subject-feedback li {
+            margin-bottom: 5px;
+        }
+        .capability-rating {
+            margin: 15px 0;
+        }
+        .capability-item {
+            margin-bottom: 10px;
+        }
+        .capability-name {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .rating-scale {
+            display: flex;
+            background-color: #f0f0f0;
+            border-radius: 15px;
+            overflow: hidden;
+            height: 25px;
+        }
+        .rating-option {
+            flex: 1;
+            text-align: center;
+            line-height: 25px;
+            border-right: 1px solid #fff;
+            font-size: 0.8rem;
+        }
+        .rating-option:last-child {
+            border-right: none;
+        }
+        .rating-option.selected {
+            background-color: #00437d;
+            color: white;
+        }
+        .feedback-section {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .feedback-prompt {
+            font-weight: bold;
+            color: #00437d;
+            margin-bottom: 10px;
+        }
+        .feedback-area {
+            min-height: 150px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 15px;
+            background-color: #fff;
+        }
+        .footer {
+            text-align: center;
+            font-size: 0.8rem;
+            color: #666;
+            margin-top: 30px;
+            padding-top: 10px;
+            border-top: 1px solid #ddd;
+        }
+        .header-container {
+            position: relative;
+            width: 100%;
+            margin-bottom: 20px;
+        }
+        
+        /* Additional responsive classes */
+        @media print {
+            .page {
+                page-break-after: always;
+                margin-bottom: 0;
+                padding-bottom: 0;
+                border-bottom: none;
+            }
+            body {
+                margin: 0;
+                padding: 0;
+            }
+            .container {
+                max-width: none;
+                width: 100%;
+                padding: 0;
+                margin: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-4 mb-5">
+        <!-- COVER PAGE -->
+        <div class="page cover-page">
+            <div class="header-container">
+                <!-- VIC Logo positioned at top right -->
+                <img src="{{ get_image_base64('images/logos/vic_education_logo.png') }}" alt="Victoria Education" class="vic-logo">
+                
+                <!-- School logo on the left side -->
+                <div class="text-start mt-3">
+                    {% if data.school.logo_data %}
+                    <img src="{{ data.school.logo_data }}" alt="{{ data.school.name }}" class="school-logo">
+                    {% else %}
+                    <img src="https://via.placeholder.com/200x100?text=School+Logo" alt="School Logo" class="school-logo">
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="text-center">
+                <h1 class="school-name">{{ data.school.name }}</h1>
+                <h2 class="report-title">Student Report</h2>
+                <h3>Semester {{ data.semester }} {{ data.year }}</h3>
+            </div>
+            
+            <div class="mt-4">
+                {% if data.student.photo_data %}
+                <img src="{{ data.student.photo_data }}" alt="{{ data.student.name.full_name }}" class="student-photo">
+                {% else %}
+                <div class="student-photo-placeholder">Student Photo</div>
+                {% endif %}
+                
+                <h4 class="mt-3">{{ data.student.name.full_name }}</h4>
+                <p><strong>Year Level:</strong> {{ data.student.grade }}</p>
+                <p><strong>Class:</strong> {{ data.student.class }}</p>
+            </div>
+            
+            <div class="signatures">
+                <div class="signature-box">
+                    <div class="signature-line">{{ data.student.teacher.full_name }}</div>
+                    <div>Class Teacher</div>
+                </div>
+                <div class="signature-box">
+                    <div class="signature-line">{{ data.school.principal }}</div>
+                    <div>Principal</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- INSIDE COVER PAGE - Report Guide -->
+        <div class="page">
+            <div class="header-container">
+                <img src="{{ get_image_base64('images/logos/vic_education_logo.png') }}" alt="Victoria Education" class="vic-logo">
+                
+                <!-- School logo on the left side -->
+                <div class="text-start mt-3">
+                    {% if data.school.logo_data %}
+                    <img src="{{ data.school.logo_data }}" alt="{{ data.school.name }}" class="school-logo">
+                    {% else %}
+                    <img src="https://via.placeholder.com/200x100?text=School+Logo" alt="School Logo" class="school-logo">
+                    {% endif %}
+                </div>
+            </div>
+            
+            <h3 class="text-start mb-4">Understanding Your Child's Report</h3>
+            
+            <div class="report-guide">
+                <h4>Purpose of This Report</h4>
+                <p>This report provides you with a clear picture of your child's achievement and progress in relation to the Victorian Curriculum F-10 standards. It outlines what your child knows and can do, areas for growth, and suggestions for supporting their continued learning.</p>
+                
+                <h4>Contents of The Report</h4>
+                <ul>
+                    <li>Personal and social capability assessment</li>
+                    <li>Teacher comments on your child's achievements and learning growth</li>
+                    <li>Subject-specific assessments and comments</li>
+                    <li>Areas of strength and areas for improvement</li>
+                    <li>Attendance information</li>
+                    <li>Opportunity for parent/carer and student comments</li>
+                </ul>
+                
+                <h4>Achievement and Progress Explained</h4>
+                <p><strong>Achievement</strong> refers to what your child knows and can do at this point in time. It is shown on a continuum of learning, representing the knowledge and skills appropriate for your child's year level.</p>
+                <p><strong>Progress</strong> refers to the growth in learning that your child has made since their previous report. Progress is about how much your child has improved, regardless of their starting point.</p>
+                
+                <h4>How to Read the Ratings and Scales</h4>
+                <div class="achievement-scale">
+                    <div class="achievement-scale-header">Five-Point Scale for Achievement</div>
+                    <div class="scale-item"><strong>Well Above Standard</strong>: Your child is demonstrating knowledge and skills well beyond the expected standard for their year level.</div>
+                    <div class="scale-item"><strong>Above Standard</strong>: Your child is demonstrating knowledge and skills beyond the expected standard for their year level.</div>
+                    <div class="scale-item"><strong>At Standard</strong>: Your child is demonstrating the knowledge and skills expected at their year level.</div>
+                    <div class="scale-item"><strong>Below Standard</strong>: Your child is working toward the knowledge and skills expected at their year level.</div>
+                    <div class="scale-item"><strong>Well Below Standard</strong>: Your child needs additional support to develop the knowledge and skills expected at their year level.</div>
+                </div>
+                
+                <h4>Learning Continuum</h4>
+                <p>The learning continuum shows your child's current level of achievement. The colored indicator represents your child's current achievement, while the red marker shows the expected standard for their year level.</p>
+                
+                <h4>Parent-Teacher Conferences</h4>
+                <p>This report is one piece of our ongoing communication. We encourage you to discuss this report with your child and attend parent-teacher-student conferences to gain a deeper understanding of your child's progress and discuss strategies to support their continued learning.</p>
+            </div>
+        </div>
+        
+        <!-- INITIAL PAGE - Personal Information -->
+        <div class="page">
+            <div class="header-container">
+                <img src="{{ get_image_base64('images/logos/vic_education_logo.png') }}" alt="Victoria Education" class="vic-logo">
+                
+                <!-- School logo on the left side -->
+                <div class="text-start mt-3">
+                    {% if data.school.logo_data %}
+                    <img src="{{ data.school.logo_data }}" alt="{{ data.school.name }}" class="school-logo">
+                    {% else %}
+                    <img src="https://via.placeholder.com/200x100?text=School+Logo" alt="School Logo" class="school-logo">
+                    {% endif %}
+                </div>
+            </div>
+            
+            <h3 class="mb-4">Personal Information and Overview</h3>
+            
+            <div class="personal-details">
+                <h4>Personal Comment</h4>
+                <div class="personal-comment">
+                    {{ data.general_comment }}
+                </div>
+                
+                <h4>Personal and Social Capability</h4>
+                <div class="capability-rating">
+                    <div class="capability-item">
+                        <div class="capability-name">Self-awareness and Management</div>
+                        <div class="rating-scale">
+                            <div class="rating-option">Well Below</div>
+                            <div class="rating-option">Below</div>
+                            <div class="rating-option selected">At Standard</div>
+                            <div class="rating-option">Above</div>
+                            <div class="rating-option">Well Above</div>
+                        </div>
+                    </div>
+                    <div class="capability-item">
+                        <div class="capability-name">Social Awareness and Management</div>
+                        <div class="rating-scale">
+                            <div class="rating-option">Well Below</div>
+                            <div class="rating-option">Below</div>
+                            <div class="rating-option">At Standard</div>
+                            <div class="rating-option selected">Above</div>
+                            <div class="rating-option">Well Above</div>
+                        </div>
+                    </div>
+                    <div class="capability-item">
+                        <div class="capability-name">Critical and Creative Thinking</div>
+                        <div class="rating-scale">
+                            <div class="rating-option">Well Below</div>
+                            <div class="rating-option">Below</div>
+                            <div class="rating-option">At Standard</div>
+                            <div class="rating-option selected">Above</div>
+                            <div class="rating-option">Well Above</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <h4>Attendance Information</h4>
+                <div class="attendance-box">
+                    <p>Regular attendance at school is essential for your child's learning and development. The table below summarizes your child's attendance for this semester.</p>
+                    
+                    <div class="attendance-summary">
+                        <div class="attendance-item">
+                            <div class="attendance-number">{{ data.attendance.present_days }}</div>
+                            <div>Days Present</div>
+                        </div>
+                        <div class="attendance-item">
+                            <div class="attendance-number">{{ data.attendance.absent_days }}</div>
+                            <div>Days Absent</div>
+                        </div>
+                        <div class="attendance-item">
+                            <div class="attendance-number">{{ data.attendance.late_days }}</div>
+                            <div>Late Arrivals</div>
+                        </div>
+                        <div class="attendance-item">
+                            <div class="attendance-number">{{ data.attendance.attendance_rate }}%</div>
+                            <div>Attendance Rate</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- SUBJECT PAGES -->
+        {% for subject in data.subjects %}
+        <div class="page">
+            <div class="header-container">
+                <img src="{{ get_image_base64('images/logos/vic_education_logo.png') }}" alt="Victoria Education" class="vic-logo">
+                
+                <!-- School logo on the left side -->
+                <div class="text-start mt-3">
+                    {% if data.school.logo_data %}
+                    <img src="{{ data.school.logo_data }}" alt="{{ data.school.name }}" class="school-logo">
+                    {% else %}
+                    <img src="https://via.placeholder.com/200x100?text=School+Logo" alt="School Logo" class="school-logo">
+                    {% endif %}
+                </div>
+            </div>
+            
+            <h3 class="mb-4">{{ subject.subject }}</h3>
+            
+            <div class="subject-overview">
+                <div class="subject-name">{{ subject.subject }} Overview</div>
+                <p>During this semester, students have been learning about key concepts and developing skills in {{ subject.subject }}. The learning program has focused on building their understanding and application of knowledge in this area.</p>
+                
+                <h5>Achievement</h5>
+                <div class="achievement-bar">
+                    <!-- Dynamically set width based on achievement level -->
+                    {% if subject.achievement.label == "Well Above Standard" or subject.achievement.code == "A" %}
+                    <div class="achievement-indicator" style="width: 90%;"></div>
+                    {% elif subject.achievement.label == "Above Standard" or subject.achievement.code == "B" %}
+                    <div class="achievement-indicator" style="width: 75%;"></div>
+                    {% elif subject.achievement.label == "At Standard" or subject.achievement.code == "C" %}
+                    <div class="achievement-indicator" style="width: 50%;"></div>
+                    {% elif subject.achievement.label == "Below Standard" or subject.achievement.code == "D" %}
+                    <div class="achievement-indicator" style="width: 25%;"></div>
+                    {% elif subject.achievement.label == "Well Below Standard" or subject.achievement.code == "E" %}
+                    <div class="achievement-indicator" style="width: 10%;"></div>
+                    <!-- Map legacy codes to VIC achievement levels -->
+                    {% elif subject.achievement.label == "Outstanding" or subject.achievement.code == "O" %}
+                    <div class="achievement-indicator" style="width: 90%;"></div>
+                    {% elif subject.achievement.label == "High" or subject.achievement.code == "H" %}
+                    <div class="achievement-indicator" style="width: 75%;"></div>
+                    {% elif subject.achievement.label == "Expected" or subject.achievement.code == "S" %}
+                    <div class="achievement-indicator" style="width: 50%;"></div>
+                    {% elif subject.achievement.label == "Basic" or subject.achievement.code == "B" %}
+                    <div class="achievement-indicator" style="width: 25%;"></div>
+                    {% elif subject.achievement.label == "Limited" or subject.achievement.code == "L" %}
+                    <div class="achievement-indicator" style="width: 10%;"></div>
+                    {% else %}
+                    <div class="achievement-indicator" style="width: 50%;"></div>
+                    {% endif %}
+                    <!-- Expected level marker positioned at 50% -->
+                    <div class="achievement-marker" style="left: 50%;"></div>
+                </div>
+                <div class="achievement-labels">
+                    <div>Well Below Standard</div>
+                    <div>Below Standard</div>
+                    <div>At Standard</div>
+                    <div>Above Standard</div>
+                    <div>Well Above Standard</div>
+                </div>
+                
+                <div class="capability-item mt-4">
+                    <div class="capability-name">{{ subject.subject }} Achievement Rating</div>
+                    <div class="rating-scale">
+                        <div class="rating-option {% if subject.achievement.label == 'Well Below Standard' or subject.achievement.code == 'E' or subject.achievement.label == 'Limited' or subject.achievement.code == 'L' %}selected{% endif %}">Well Below</div>
+                        <div class="rating-option {% if subject.achievement.label == 'Below Standard' or subject.achievement.code == 'D' or subject.achievement.label == 'Basic' or subject.achievement.code == 'B' %}selected{% endif %}">Below</div>
+                        <div class="rating-option {% if subject.achievement.label == 'At Standard' or subject.achievement.code == 'C' or subject.achievement.label == 'Expected' or subject.achievement.code == 'S' %}selected{% endif %}">At Standard</div>
+                        <div class="rating-option {% if subject.achievement.label == 'Above Standard' or subject.achievement.code == 'B' or subject.achievement.label == 'High' or subject.achievement.code == 'H' %}selected{% endif %}">Above</div>
+                        <div class="rating-option {% if subject.achievement.label == 'Well Above Standard' or subject.achievement.code == 'A' or subject.achievement.label == 'Outstanding' or subject.achievement.code == 'O' %}selected{% endif %}">Well Above</div>
+                    </div>
+                </div>
+                
+                <div class="capability-item mt-3">
+                    <div class="capability-name">Effort in {{ subject.subject }}</div>
+                    <div class="rating-scale">
+                        <div class="rating-option {% if subject.effort.label == 'Low' or subject.effort.code == 'L' %}selected{% endif %}">Low</div>
+                        <div class="rating-option {% if subject.effort.label == 'Below Average' or subject.effort.code == 'B' %}selected{% endif %}">Below Average</div>
+                        <div class="rating-option {% if subject.effort.label == 'Satisfactory' or subject.effort.code == 'S' %}selected{% endif %}">Satisfactory</div>
+                        <div class="rating-option {% if subject.effort.label == 'Very Good' or subject.effort.code == 'V' %}selected{% endif %}">Very Good</div>
+                        <div class="rating-option {% if subject.effort.label == 'Excellent' or subject.effort.code == 'E' or subject.effort.label == 'High' or subject.effort.code == 'H' %}selected{% endif %}">Excellent</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="subject-comment">
+                {{ subject.comment }}
+            </div>
+            
+            <div class="subject-feedback">
+                <h5>Areas of Strength:</h5>
+                <ul>
+                    <li>Understanding key concepts and applying them to new situations</li>
+                    <li>Participating actively in classroom discussions and activities</li>
+                    <li>Completing tasks with attention to detail and quality</li>
+                </ul>
+                
+                <h5>Areas for Future Growth:</h5>
+                <ul>
+                    <li>Developing strategies to approach more complex problems</li>
+                    <li>Building confidence when presenting ideas to the class</li>
+                    <li>Consistently applying feedback to improve work</li>
+                </ul>
+                
+                <h5>How Parents/Carers Can Help:</h5>
+                <ul>
+                    <li>Encourage regular reading and discussion about topics in this subject</li>
+                    <li>Provide opportunities to practice skills in real-world contexts</li>
+                    <li>Help establish regular homework routines</li>
+                </ul>
+            </div>
+        </div>
+        {% endfor %}
+        
+        <!-- PARENT/CARER COMMENT -->
+        <div class="page">
+            <div class="header-container">
+                <img src="{{ get_image_base64('images/logos/vic_education_logo.png') }}" alt="Victoria Education" class="vic-logo">
+                
+                <!-- School logo on the left side -->
+                <div class="text-start mt-3">
+                    {% if data.school.logo_data %}
+                    <img src="{{ data.school.logo_data }}" alt="{{ data.school.name }}" class="school-logo">
+                    {% else %}
+                    <img src="https://via.placeholder.com/200x100?text=School+Logo" alt="School Logo" class="school-logo">
+                    {% endif %}
+                </div>
+            </div>
+            
+            <h3 class="mb-4">Parent/Carer Feedback</h3>
+            
+            <div class="feedback-section">
+                <div class="feedback-prompt">We value your thoughts and observations. Please share any comments or reflections about your child's learning this semester:</div>
+                <div class="feedback-area"></div>
+                
+                <div class="mt-4">
+                    <p>Please return this section to your child's teacher or submit your feedback online.</p>
+                    <p><strong>Parent/Carer Name:</strong> _______________________________</p>
+                    <p><strong>Signature:</strong> ______________________________________</p>
+                    <p><strong>Date:</strong> __________________________________________</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- STUDENT COMMENT -->
+        <div class="page">
+            <div class="header-container">
+                <img src="{{ get_image_base64('images/logos/vic_education_logo.png') }}" alt="Victoria Education" class="vic-logo">
+                
+                <!-- School logo on the left side -->
+                <div class="text-start mt-3">
+                    {% if data.school.logo_data %}
+                    <img src="{{ data.school.logo_data }}" alt="{{ data.school.name }}" class="school-logo">
+                    {% else %}
+                    <img src="https://via.placeholder.com/200x100?text=School+Logo" alt="School Logo" class="school-logo">
+                    {% endif %}
+                </div>
+            </div>
+            
+            <h3 class="mb-4">Student Reflection</h3>
+            
+            <div class="feedback-section">
+                <div class="feedback-prompt mb-3">Dear {{ data.student.name.first_name }},</div>
+                <p>Please take some time to reflect on your learning this semester. Consider what you have achieved, what you are proud of, and what goals you have for your continued learning.</p>
+                
+                <div class="feedback-prompt mt-4">What I am most proud of this semester:</div>
+                <div class="feedback-area mb-4"></div>
+                
+                <div class="feedback-prompt">My learning goals for next semester:</div>
+                <div class="feedback-area mb-4"></div>
+                
+                <div class="feedback-prompt">How I plan to achieve these goals:</div>
+                <div class="feedback-area"></div>
+                
+                <div class="mt-4">
+                    <p><strong>Student Signature:</strong> ______________________________</p>
+                    <p><strong>Date:</strong> _________________________________________</p>
+                </div>
+            </div>
+            
+            <div class="footer">
+                <p>{{ data.school.name }} | {{ data.school.suburb }}, {{ data.school.state|upper }}</p>
+                <p>Report generated on {{ data.report_date }}</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

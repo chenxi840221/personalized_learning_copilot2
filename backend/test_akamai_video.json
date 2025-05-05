@@ -1,0 +1,18 @@
+{
+  "id": "c10edda9-2bf2-4bd4-b511-326f7ecee9b1",
+  "url": "https://mediacore-live-production.akamaized.net/video/02/7q/Z/1j.mp4?source=web&content_id=105075446",
+  "title": "1j",
+  "description": "",
+  "duration_minutes": 0.0,
+  "thumbnails": [],
+  "captions": {
+    "full_text": "",
+    "segments": [],
+    "metadata": {
+      "duration_seconds": 111.32,
+      "processing_time": 3.02
+    }
+  },
+  "processed": true,
+  "processed_at": "2025-05-02T04:32:15.336199"
+}

@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ data.student.name.full_name }} - School Report</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            color: #333;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        .school-name {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #006699;
+        }
+        .report-title {
+            font-size: 1.4rem;
+            margin-bottom: 1rem;
+            color: #006699;
+        }
+        .student-info {
+            margin-bottom: 2rem;
+        }
+        .student-photo {
+            max-width: 150px;
+            border: 1px solid #ddd;
+            box-shadow: 0 0 5px rgba(0,0,0,0.2);
+        }
+        .subject-table th {
+            background-color: #e6f2ff;
+        }
+        .comment {
+            font-size: 0.9rem;
+        }
+        .general-comment {
+            margin: 2rem 0;
+            padding: 1rem;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+            border-left: 4px solid #006699;
+        }
+        .signatures {
+            margin-top: 3rem;
+            display: flex;
+            justify-content: space-around;
+        }
+        .signature-box {
+            text-align: center;
+            width: 40%;
+        }
+        .signature-line {
+            border-top: 1px solid #000;
+            margin-top: 2rem;
+            padding-top: 0.5rem;
+        }
+        .logo {
+            height: 80px;
+            margin-bottom: 1rem;
+        }
+        .achievement-guide {
+            font-size: 0.8rem;
+            margin-top: 2rem;
+            border: 1px solid #ddd;
+            padding: 1rem;
+            background-color: #f9f9f9;
+        }
+        .achievement-header {
+            font-weight: bold;
+            color: #006699;
+            margin-bottom: 0.5rem;
+        }
+        .capabilities-section {
+            margin-top: 2rem;
+        }
+        .capability-table th {
+            background-color: #e6f2ff;
+            font-size: 0.9rem;
+        }
+        .capability-table td {
+            font-size: 0.85rem;
+        }
+        .capability-header {
+            background-color: #006699 !important;
+            color: white !important;
+            font-weight: bold;
+        }
+        .early-years-info {
+            font-size: 0.85rem;
+            font-style: italic;
+            margin: 1rem 0;
+            padding: 0.5rem;
+            background-color: #f0f0f0;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-4 mb-5">
+        <div class="header">
+            <!-- School logo and ACT Education logo -->
+            <div class="text-center mb-3">
+                {% if data.school.logo_data %}
+                <img src="{{ data.school.logo_data }}" alt="School Logo" class="logo">
+                {% else %}
+                <img src="https://via.placeholder.com/150x80?text=School+Logo" alt="School Logo" class="logo">
+                {% endif %}
+                <img src="{{ get_image_base64('images/logos/act_education_logo.png') }}" alt="ACT Education" class="logo ms-3">
+            </div>
+            <div class="school-name">{{ data.school.name }}</div>
+            <div class="report-title">Semester {{ data.semester }} Report {{ data.year }}</div>
+        </div>
+        
+        <div class="row student-info">
+            <div class="col-md-6">
+                <p><strong>Student:</strong> {{ data.student.name.full_name }}</p>
+                <p><strong>Class:</strong> {{ data.student.class }}</p>
+                <p><strong>Teacher:</strong> {{ data.student.teacher.full_name }}</p>
+            </div>
+            <div class="col-md-6 text-end">
+                <!-- Student photo -->
+                {% if data.student.photo_data %}
+                <img src="{{ data.student.photo_data }}" alt="Student Photo" class="student-photo">
+                {% else %}
+                <img src="https://via.placeholder.com/150x180?text=Student+Photo" alt="Student Photo" class="student-photo">
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="early-years-info">
+            In the ACT, each child's learning is extended and enriched through a program aligned to the Early Years Learning Framework.
+            Your child's learning and development is assessed in relation to the Learning Outcomes.
+            (<a href="https://www.education.gov.au/early-years-learning-framework" target="_blank">https://www.education.gov.au/early-years-learning-framework</a>)
+        </div>
+        
+        <h4 class="mt-4">Academic Performance</h4>
+        <table class="table table-bordered subject-table">
+            <thead>
+                <tr>
+                    <th>Subject</th>
+                    <th style="width: 15%">Achievement</th>
+                    <th style="width: 15%">Effort</th>
+                    <th>Comments</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for subject in data.subjects %}
+                <tr>
+                    <td>{{ subject.subject }}</td>
+                    <td class="text-center">
+                        {{ subject.achievement.label }}
+                    </td>
+                    <td class="text-center">
+                        {{ subject.effort.label }}
+                    </td>
+                    <td class="comment">{{ subject.comment }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        
+        <h4 class="mt-4">Attendance</h4>
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>Days Present</th>
+                    <th>Days Absent</th>
+                    <th>Days Late</th>
+                    <th>Attendance Rate</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="text-center">{{ data.attendance.present_days }}</td>
+                    <td class="text-center">{{ data.attendance.absent_days }}</td>
+                    <td class="text-center">{{ data.attendance.late_days }}</td>
+                    <td class="text-center">{{ data.attendance.attendance_rate }}%</td>
+                </tr>
+            </tbody>
+        </table>
+        
+        <h4 class="mt-4">Personal and Social Capabilities</h4>
+        <div class="capabilities-section">
+            <table class="table table-bordered capability-table">
+                <thead>
+                    <tr>
+                        <th colspan="4" class="capability-header">Social Awareness and Social Management</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Demonstrates relational awareness</td>
+                        <td class="text-center">{% if data.student.gender == "male" %}Usually{% else %}Consistently{% endif %}</td>
+                        <td>Demonstrates leadership</td>
+                        <td class="text-center">{% if data.student.gender == "male" %}Sometimes{% else %}Usually{% endif %}</td>
+                    </tr>
+                    <tr>
+                        <td>Demonstrates community awareness</td>
+                        <td class="text-center">Usually</td>
+                        <td>Demonstrates decision-making</td>
+                        <td class="text-center">Usually</td>
+                    </tr>
+                    <tr>
+                        <td>Demonstrates communication</td>
+                        <td class="text-center">Consistently</td>
+                        <td>Demonstrates conflict resolution</td>
+                        <td class="text-center">Sometimes</td>
+                    </tr>
+                    <tr>
+                        <td>Demonstrates collaboration</td>
+                        <td class="text-center">Consistently</td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <table class="table table-bordered capability-table mt-3">
+                <thead>
+                    <tr>
+                        <th colspan="4" class="capability-header">Self-Awareness and Self-Management</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Demonstrates personal awareness</td>
+                        <td class="text-center">Usually</td>
+                        <td>Demonstrates goal setting</td>
+                        <td class="text-center">Consistently</td>
+                    </tr>
+                    <tr>
+                        <td>Demonstrates emotional awareness</td>
+                        <td class="text-center">Usually</td>
+                        <td>Demonstrates emotional regulation</td>
+                        <td class="text-center">Usually</td>
+                    </tr>
+                    <tr>
+                        <td>Demonstrates reflective practice</td>
+                        <td class="text-center">Usually</td>
+                        <td>Demonstrates perseverance and adaptability</td>
+                        <td class="text-center">Usually</td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="text-end">
+                <small>C = Consistently, U = Usually, S = Sometimes, R = Rarely</small>
+            </div>
+        </div>
+        
+        <h4 class="mt-4">General Comment</h4>
+        <div class="general-comment">
+            {{ data.general_comment }}
+        </div>
+        
+        <div class="signatures">
+            <div class="signature-box">
+                <div class="signature-line">{{ data.student.teacher.full_name }}</div>
+                <div>Teacher</div>
+            </div>
+            <div class="signature-box">
+                <div class="signature-line">{{ data.school.principal }}</div>
+                <div>Principal</div>
+            </div>
+        </div>
+        
+        <div class="achievement-guide mt-4">
+            <div class="achievement-header">Achievement Scale:</div>
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Outstanding:</strong> Demonstrating outstanding achievement of the standard</p>
+                    <p><strong>High:</strong> Demonstrating a high achievement of the standard</p>
+                    <p><strong>At Standard:</strong> Demonstrating achievement at the standard</p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Partial:</strong> Demonstrating partial achievement of the standard</p>
+                    <p><strong>Limited:</strong> Demonstrating limited achievement of the standard</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="text-center mt-4">
+            <small>Report generated on {{ data.report_date }}</small>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,82 @@
+{
+  "name": "ACT Student Report",
+  "description": "Australian Capital Territory school report format",
+  "subjects": [
+    "English",
+    "Mathematics",
+    "Humanities and Social Sciences",
+    "Science",
+    "Health and Physical Education",
+    "The Arts"
+  ],
+  "achievement_scale": [
+    {
+      "code": "O",
+      "label": "Outstanding",
+      "description": "Demonstrating outstanding achievement of the standard"
+    },
+    {
+      "code": "H",
+      "label": "High",
+      "description": "Demonstrating a high achievement of the standard"
+    },
+    {
+      "code": "A",
+      "label": "At Standard",
+      "description": "Demonstrating achievement at the standard"
+    },
+    {
+      "code": "P",
+      "label": "Partial",
+      "description": "Demonstrating partial achievement of the standard"
+    },
+    {
+      "code": "L",
+      "label": "Limited",
+      "description": "Demonstrating limited achievement of the standard"
+    }
+  ],
+  "effort_scale": [
+    {
+      "code": "C",
+      "label": "Consistently",
+      "description": "Consistently demonstrates the habit/capability"
+    },
+    {
+      "code": "U",
+      "label": "Usually",
+      "description": "Usually demonstrates the habit/capability"
+    },
+    {
+      "code": "S",
+      "label": "Sometimes",
+      "description": "Sometimes demonstrates the habit/capability"
+    },
+    {
+      "code": "R",
+      "label": "Rarely",
+      "description": "Rarely demonstrates the habit/capability"
+    }
+  ],
+  "capabilities": {
+    "social": [
+      "Demonstrates relational awareness",
+      "Demonstrates community awareness",
+      "Demonstrates communication",
+      "Demonstrates collaboration",
+      "Demonstrates leadership",
+      "Demonstrates decision-making",
+      "Demonstrates conflict resolution"
+    ],
+    "self": [
+      "Demonstrates personal awareness",
+      "Demonstrates emotional awareness",
+      "Demonstrates reflective practice",
+      "Demonstrates goal setting",
+      "Demonstrates emotional regulation",
+      "Demonstrates perseverance and adaptability"
+    ]
+  },
+  "template_file": "act_template.html",
+  "logo_file": "act_logo.png"
+}

@@ -1,0 +1,64 @@
+version: '3'
+
+services:
+  # Backend API
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - SECRET_KEY=${SECRET_KEY}
+      - ALGORITHM=HS256
+      - ACCESS_TOKEN_EXPIRE_MINUTES=60
+      - OPENAI_API_TYPE=azure
+      - OPENAI_API_VERSION=${OPENAI_API_VERSION}
+      - OPENAI_API_BASE=${OPENAI_API_BASE}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_DEPLOYMENT_NAME=${OPENAI_DEPLOYMENT_NAME}
+      - SEARCH_ENDPOINT=${SEARCH_ENDPOINT}
+      - SEARCH_API_KEY=${SEARCH_API_KEY}
+      - FORM_RECOGNIZER_ENDPOINT=${FORM_RECOGNIZER_ENDPOINT}
+      - FORM_RECOGNIZER_KEY=${FORM_RECOGNIZER_KEY}
+      - TEXT_ANALYTICS_ENDPOINT=${TEXT_ANALYTICS_ENDPOINT}
+      - TEXT_ANALYTICS_KEY=${TEXT_ANALYTICS_KEY}
+      - MS_TENANT_ID=${MS_TENANT_ID}
+      - MS_CLIENT_ID=${MS_CLIENT_ID}
+      - MS_CLIENT_SECRET=${MS_CLIENT_SECRET}
+  scheduler:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: python start_scheduler.py
+    depends_on:
+      - backend
+    environment:
+      - MONGODB_URI=${MONGODB_URI}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_API_BASE=${OPENAI_API_BASE}
+      - OPENAI_API_VERSION=${OPENAI_API_VERSION}
+    restart: always
+    volumes:
+      - ./backend:/app
+      - ./logs:/app/logs      
+    networks:
+      - app-network
+
+  # Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    environment:
+      - REACT_APP_API_URL=http://localhost:8000
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge

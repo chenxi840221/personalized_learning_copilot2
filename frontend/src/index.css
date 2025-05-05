@@ -1,0 +1,210 @@
+/* Base styles */
+body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: #f9fafb;
+  color: #111827;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}
+
+.App {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+main {
+  flex: 1;
+}
+
+/* Animation utilities */
+.animate-fadeIn {
+  animation: fadeIn 0.5s ease-in;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Helper classes */
+.line-clamp-1,
+.line-clamp-2,
+.line-clamp-3 {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.line-clamp-1 {
+  -webkit-line-clamp: 1;
+}
+
+.line-clamp-2 {
+  -webkit-line-clamp: 2;
+}
+
+.line-clamp-3 {
+  -webkit-line-clamp: 3;
+}
+
+/* Responsive enhancements */
+
+/* Better touch targets for mobile */
+@media (max-width: 640px) {
+  /* Make buttons and interactive elements easier to tap */
+  button, 
+  a.btn, 
+  select, 
+  input[type="submit"],
+  input[type="button"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Add more spacing between clickable elements */
+  .space-touch-elements > * {
+    margin-bottom: 12px;
+  }
+  
+  /* Increase line-height for better text readability on small screens */
+  p, li, td, th {
+    line-height: 1.6;
+  }
+  
+  /* Ensure inputs have enough height on mobile */
+  input, select, textarea {
+    font-size: 16px; /* Prevents iOS zoom on focus */
+    padding: 10px 12px;
+  }
+  
+  /* Fix for iOS input zoom issues */
+  select, input, textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* Fix scrolling issues on iOS */
+html, body {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: none;
+}
+
+/* Adjust heading sizes for smaller screens */
+@media (max-width: 640px) {
+  h1 {
+    font-size: 1.5rem !important;
+  }
+  
+  h2 {
+    font-size: 1.25rem !important;
+  }
+  
+  h3 {
+    font-size: 1.125rem !important;
+  }
+}
+
+/* Handle notch phones and safe areas */
+@supports (padding: max(0px)) {
+  .safe-padding {
+    padding-left: max(1rem, env(safe-area-inset-left));
+    padding-right: max(1rem, env(safe-area-inset-right));
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+}
+
+/* Improve mobile navbar */
+.mobile-navbar-fixed {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+
+/* Hide scrollbar for touch devices but maintain scroll functionality */
+@media (hover: none) and (pointer: coarse) {
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
+/* Optimized mobile viewports */
+.mobile-viewport-height {
+  height: 100vh;
+  height: calc(var(--vh, 1vh) * 100);
+}
+
+/* Additional tablet-specific adjustments */
+@media (min-width: 641px) and (max-width: 1024px) {
+  /* Adjust padding/margins for better use of tablet space */
+  .container {
+    padding-left: 24px;
+    padding-right: 24px;
+  }
+  
+  /* Optimize touch targets for tablet stylus and finger input */
+  button, 
+  a.btn, 
+  select, 
+  input[type="submit"],
+  input[type="button"] {
+    min-height: 40px;
+  }
+}
+
+/* Fix for landscape orientation on phones */
+@media (max-height: 500px) and (orientation: landscape) {
+  .mobile-menu-fullscreen {
+    height: 100%;
+    overflow-y: auto;
+  }
+  
+  /* Adjust spacing in landscape mode */
+  .landscape-compact {
+    padding-top: 0.5rem !important;
+    padding-bottom: 0.5rem !important;
+  }
+  
+  /* Make headers smaller in landscape mode */
+  h1 {
+    font-size: 1.25rem !important;
+  }
+}
+
+/* Print styles for learning plans */
+@media print {
+  body {
+    background-color: white !important;
+  }
+  
+  .no-print {
+    display: none !important;
+  }
+  
+  .print-full-width {
+    width: 100% !important;
+  }
+  
+  /* Expand all learning plans when printing */
+  .learning-plan-details {
+    display: block !important;
+  }
+}

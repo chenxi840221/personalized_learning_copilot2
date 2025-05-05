@@ -1,0 +1,65 @@
+{
+  "name": "NSW Student Report",
+  "description": "New South Wales school report format",
+  "subjects": [
+    "English",
+    "Mathematics",
+    "Science and Technology",
+    "Human Society and its Environment",
+    "Creative Arts",
+    "Personal Development, Health and Physical Education"
+  ],
+  "achievement_scale": [
+    {
+      "code": "A",
+      "label": "Outstanding",
+      "description": "Your child's achievement in this subject is outstanding. They confidently apply their knowledge and skills in a range of new and complex situations."
+    },
+    {
+      "code": "B",
+      "label": "High",
+      "description": "Your child's achievement in this subject is high. They confidently apply their knowledge and skills in a range of familiar and new situations."
+    },
+    {
+      "code": "C",
+      "label": "Expected",
+      "description": "Your child's achievement in this subject is at the expected standard. They apply their knowledge and skills in familiar situations."
+    },
+    {
+      "code": "D",
+      "label": "Basic",
+      "description": "Your child's achievement in this subject is basic. They apply their knowledge and skills in familiar situations with support."
+    },
+    {
+      "code": "E",
+      "label": "Limited",
+      "description": "Your child's achievement in this subject is limited. They apply their knowledge and skills in some familiar situations with significant support."
+    }
+  ],
+  "effort_scale": [
+    {
+      "code": "H",
+      "label": "High",
+      "description": "Your child actively participates and engages in most learning activities. They always try to complete and present work to a high standard."
+    },
+    {
+      "code": "S",
+      "label": "Satisfactory",
+      "description": "Your child actively participates and engages in most learning activities. They regularly try to complete and present work to the required standard."
+    },
+    {
+      "code": "L",
+      "label": "Low",
+      "description": "Your child sometimes participates and engages in learning activities. They occasionally try to complete and present work to the required standard."
+    }
+  ],
+  "social_development": [
+    "Displays a positive attitude to learning",
+    "Respects the rights and property of others",
+    "Respects class and school rules",
+    "Shows initiative and enthusiasm",
+    "Helps and encourages others"
+  ],
+  "template_file": "nsw_template.html",
+  "logo_file": "nsw_logo.png"
+}

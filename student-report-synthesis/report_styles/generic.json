@@ -1,0 +1,57 @@
+{
+  "name": "Generic Student Report",
+  "description": "A generic student report style with standard subjects",
+  "subjects": [
+    "English",
+    "Mathematics",
+    "Science",
+    "Humanities",
+    "Arts",
+    "Physical Education"
+  ],
+  "achievement_scale": [
+    {
+      "code": "A",
+      "label": "Outstanding",
+      "description": "Outstanding achievement of the standard"
+    },
+    {
+      "code": "B",
+      "label": "High",
+      "description": "High achievement of the standard"
+    },
+    {
+      "code": "C",
+      "label": "Expected",
+      "description": "Meeting the expected standard"
+    },
+    {
+      "code": "D",
+      "label": "Basic",
+      "description": "Basic achievement of the standard"
+    },
+    {
+      "code": "E",
+      "label": "Limited",
+      "description": "Limited achievement of the standard"
+    }
+  ],
+  "effort_scale": [
+    {
+      "code": "H",
+      "label": "High",
+      "description": "Consistently demonstrates high effort"
+    },
+    {
+      "code": "S",
+      "label": "Satisfactory",
+      "description": "Usually demonstrates satisfactory effort"
+    },
+    {
+      "code": "L",
+      "label": "Low",
+      "description": "Demonstrates inconsistent effort"
+    }
+  ],
+  "template_file": "generic_template.html"
+}

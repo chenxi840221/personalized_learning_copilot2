@@ -1,0 +1,40 @@
+{
+  "id": "e880da43-dcd8-49aa-b587-4e160e2b4dc1",
+  "url": "https://www.learningcontainer.com/wp-content/uploads/2020/05/sample-mp4-file.mp4",
+  "title": "sample-mp4-file",
+  "description": "Downloaded from https://www.learningcontainer.com/wp-content/uploads/2020/05/sample-mp4-file.mp4",
+  "duration_minutes": 2.1,
+  "thumbnails": [],
+  "captions": {
+    "full_text": "This is a simulated transcript for testing. In a real implementation, this would contain the actual speech transcription from the video content. The Azure Speech Service would extract this text automatically.",
+    "segments": [
+      {
+        "id": 1,
+        "text": "This is a simulated transcript for testing.",
+        "start_time": 0.0,
+        "end_time": 5.0,
+        "duration": 5.0
+      },
+      {
+        "id": 2,
+        "text": "In a real implementation, this would contain the actual speech transcription.",
+        "start_time": 5.0,
+        "end_time": 10.0,
+        "duration": 5.0
+      },
+      {
+        "id": 3,
+        "text": "The Azure Speech Service would extract this text automatically.",
+        "start_time": 10.0,
+        "end_time": 15.0,
+        "duration": 5.0
+      }
+    ],
+    "metadata": {
+      "duration_seconds": 15.0,
+      "processing_time": 4.410743713378906e-05
+    }
+  },
+  "processed": true,
+  "processed_at": "2025-05-02T06:44:04.738223"
+}

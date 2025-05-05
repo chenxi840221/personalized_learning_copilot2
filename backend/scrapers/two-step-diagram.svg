@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="500" viewBox="0 0 800 500">
+  <!-- Background -->
+  <rect width="800" height="500" fill="#f8f9fa" rx="10" ry="10" />
+  
+  <!-- Title -->
+  <text x="400" y="40" font-family="Arial" font-size="24" font-weight="bold" text-anchor="middle" fill="#333">Two-Step Education Resource Scraper</text>
+  
+  <!-- Step 1: Indexing -->
+  <rect x="50" y="80" width="700" height="150" fill="#e1f5fe" stroke="#0288d1" stroke-width="2" rx="8" ry="8" />
+  <text x="80" y="110" font-family="Arial" font-size="18" font-weight="bold" fill="#0288d1">Step 1: Resource Indexing</text>
+  
+  <!-- Step 1 Components -->
+  <rect x="80" y="130" width="160" height="80" fill="#b3e5fc" stroke="#0288d1" stroke-width="1" rx="5" ry="5" />
+  <text x="160" y="160" font-family="Arial" font-size="14" text-anchor="middle" fill="#333">Discover Subjects</text>
+  <text x="160" y="180" font-family="Arial" font-size="12" text-anchor="middle" fill="#555">Arts, Math, Science...</text>
+  
+  <rect x="270" y="130" width="160" height="80" fill="#b3e5fc" stroke="#0288d1" stroke-width="1" rx="5" ry="5" />
+  <text x="350" y="160" font-family="Arial" font-size="14" text-anchor="middle" fill="#333">Find Resources</text>
+  <text x="350" y="180" font-family="Arial" font-size="12" text-anchor="middle" fill="#555">Articles, Videos, Quizzes...</text>
+  
+  <rect x="460" y="130" width="160" height="80" fill="#b3e5fc" stroke="#0288d1" stroke-width="1" rx="5" ry="5" />
+  <text x="540" y="160" font-family="Arial" font-size="14" text-anchor="middle" fill="#333">Build Index</text>
+  <text x="540" y="180" font-family="Arial" font-size="12" text-anchor="middle" fill="#555">resource_index.json</text>
+  
+  <!-- Arrows between step 1 components -->
+  <line x1="240" y1="170" x2="270" y2="170" stroke="#0288d1" stroke-width="2" />
+  <polygon points="270,170 265,167 265,173" fill="#0288d1" />
+  
+  <line x1="430" y1="170" x2="460" y2="170" stroke="#0288d1" stroke-width="2" />
+  <polygon points="460,170 455,167 455,173" fill="#0288d1" />
+  
+  <!-- Step 2: Extraction -->
+  <rect x="50" y="260" width="700" height="190" fill="#e8f5e9" stroke="#388e3c" stroke-width="2" rx="8" ry="8" />
+  <text x="80" y="290" font-family="Arial" font-size="18" font-weight="bold" fill="#388e3c">Step 2: Content Extraction</text>
+  
+  <!-- Step 2 Components -->
+  <rect x="80" y="320" width="160" height="90" fill="#c8e6c9" stroke="#388e3c" stroke-width="1" rx="5" ry="5" />
+  <text x="160" y="345" font-family="Arial" font-size="14" text-anchor="middle" fill="#333">Load Index</text>
+  <text x="160" y="365" font-family="Arial" font-size="12" text-anchor="middle" fill="#555">Read resource_index.json</text>
+  
+  <rect x="270" y="320" width="160" height="90" fill="#c8e6c9" stroke="#388e3c" stroke-width="1" rx="5" ry="5" />
+  <text x="350" y="345" font-family="Arial" font-size="14" text-anchor="middle" fill="#333">Extract Content</text>
+  <text x="350" y="365" font-family="Arial" font-size="12" text-anchor="middle" fill="#555">Text, Video, Audio...</text>
+  <text x="350" y="385" font-family="Arial" font-size="12" text-anchor="middle" fill="#555">Metadata, Transcripts</text>
+  
+  <rect x="460" y="320" width="160" height="90" fill="#c8e6c9" stroke="#388e3c" stroke-width="1" rx="5" ry="5" />
+  <text x="540" y="345" font-family="Arial" font-size="14" text-anchor="middle" fill="#333">Process & Store</text>
+  <text x="540" y="365" font-family="Arial" font-size="12" text-anchor="middle" fill="#555">Generate Embeddings</text>
+  <text x="540" y="385" font-family="Arial" font-size="12" text-anchor="middle" fill="#555">Save to Vector Store</text>
+  
+  <!-- Arrows between step 2 components -->
+  <line x1="240" y1="365" x2="270" y2="365" stroke="#388e3c" stroke-width="2" />
+  <polygon points="270,365 265,362 265,368" fill="#388e3c" />
+  
+  <line x1="430" y1="365" x2="460" y2="365" stroke="#388e3c" stroke-width="2" />
+  <polygon points="460,365 455,362 455,368" fill="#388e3c" />
+  
+  <!-- Arrow connecting steps -->
+  <line x1="540" y1="210" x2="540" y2="320" stroke="#333" stroke-width="2" stroke-dasharray="5,5" />
+  <polygon points="540,320 537,315 543,315" fill="#333" />
+  <rect x="550" y="255" width="120" height="20" fill="#f8f9fa" />
+  <text x="610" y="270" font-family="Arial" font-size="14" text-anchor="middle" fill="#333">Verification</text>
+  
+  <!-- Output -->
+  <rect x="350" y="460" width="200" height="30" fill="#fff8e1" stroke="#ffa000" stroke-width="2" rx="15" ry="15" />
+  <text x="450" y="480" font-family="Arial" font-size="14" text-anchor="middle" fill="#333">Educational Content Database</text>
+  
+  <!-- Arrow to output -->
+  <line x1="540" y1="410" x2="540" y2="460" stroke="#ffa000" stroke-width="2" />
+  <polygon points="540,460 537,455 543,455" fill="#ffa000" />
+</svg>

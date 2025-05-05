@@ -1,0 +1,86 @@
+{
+  "name": "Victoria Student Report",
+  "description": "Victoria school report format aligned with Victorian Curriculum F-10",
+  "subjects": [
+    "English",
+    "Mathematics",
+    "Science",
+    "Health and Physical Education",
+    "Humanities and Social Sciences",
+    "The Arts",
+    "Technologies",
+    "Languages"
+  ],
+  "achievement_scale": [
+    {
+      "code": "A",
+      "label": "Well Above Standard",
+      "description": "Student demonstrates knowledge and skills well beyond the expected standard for their year level."
+    },
+    {
+      "code": "B",
+      "label": "Above Standard",
+      "description": "Student demonstrates knowledge and skills beyond the expected standard for their year level."
+    },
+    {
+      "code": "C",
+      "label": "At Standard",
+      "description": "Student demonstrates the knowledge and skills expected at their year level."
+    },
+    {
+      "code": "D",
+      "label": "Below Standard",
+      "description": "Student is working toward the knowledge and skills expected at their year level."
+    },
+    {
+      "code": "E",
+      "label": "Well Below Standard",
+      "description": "Student needs additional support to develop the knowledge and skills expected at their year level."
+    }
+  ],
+  "effort_scale": [
+    {
+      "code": "E",
+      "label": "Excellent",
+      "description": "Student consistently demonstrates high effort and engagement with their learning."
+    },
+    {
+      "code": "V",
+      "label": "Very Good",
+      "description": "Student usually demonstrates strong effort and engagement with their learning."
+    },
+    {
+      "code": "S",
+      "label": "Satisfactory",
+      "description": "Student demonstrates adequate effort and engagement with their learning."
+    },
+    {
+      "code": "B",
+      "label": "Below Average",
+      "description": "Student demonstrates inconsistent effort and engagement with their learning."
+    },
+    {
+      "code": "L",
+      "label": "Low",
+      "description": "Student demonstrates minimal effort and engagement with their learning."
+    }
+  ],
+  "capabilities": {
+    "personal": [
+      "Self-awareness and Management",
+      "Critical and Creative Thinking",
+      "Problem Solving",
+      "Ethical Capability",
+      "Metacognition"
+    ],
+    "social": [
+      "Social Awareness and Management",
+      "Intercultural Capability",
+      "Collaboration",
+      "Communication",
+      "Leadership"
+    ]
+  },
+  "template_file": "vic_template.html",
+  "logo_file": "vic_education_logo.png"
+}

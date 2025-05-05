@@ -1,0 +1,18 @@
+{
+  "id": "b5f3f36e-853d-4feb-a20a-35b63272a6ae",
+  "url": "https://www.learningcontainer.com/wp-content/uploads/2020/05/sample-mp4-file.mp4",
+  "title": "sample-mp4-file",
+  "description": "Downloaded from https://www.learningcontainer.com/wp-content/uploads/2020/05/sample-mp4-file.mp4",
+  "duration_minutes": 2.1,
+  "thumbnails": [],
+  "captions": {
+    "full_text": "",
+    "segments": [],
+    "metadata": {
+      "duration_seconds": 125.95,
+      "processing_time": 3.04
+    }
+  },
+  "processed": true,
+  "processed_at": "2025-05-02T04:25:43.286980"
+}
